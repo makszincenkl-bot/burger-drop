@@ -744,6 +744,14 @@ async function spinCase(c){
   const b=$('modalOpenBtn'); b.disabled=true; b.textContent='КРУТИМ...'; $('modalContents').style.display='none'; $('modalLog').textContent='';
   
   const winner=pickPrize(c.items);
+  
+  // --- СРАЗУ ЗАПИСЫВАЕМ В ИНВЕНТАРЬ И БАЗУ ---
+  const old = u.inventory.find(i => i.name === winner.name);
+  if(old) old.count += 1; else u.inventory.push({ name: winner.name, emoji: winner.emoji, val: winner.val, count: 1, color: winner.color });
+  await saveInventory(); // Сохраняем СРАЗУ
+  renderInventory(); // Обновляем UI
+  renderInventorySelect();
+  
   const cells=Array.from({length:40},()=>pickPrize(c.items)); cells[32]=winner;
   
   $('modalRouletteWrap').innerHTML='<div class="roulette-view"><div class="roulette-strip" id="strip"></div><div class="roulette-marker"></div></div>';
@@ -758,11 +766,6 @@ async function spinCase(c){
   },50);
 
   setTimeout(async ()=>{
-    const old = u.inventory.find(i => i.name === winner.name);
-    if(old) old.count += 1; else u.inventory.push({ name: winner.name, emoji: winner.emoji, val: winner.val, count: 1, color: winner.color });
-    
-    updateBalance(); renderInventory(); renderInventorySelect(); await saveInventory();
-    
     playSound('win'); vibrate(100);
     $('modalLog').textContent=`🎁 Выпало: ${winner.name} (${winner.val} 🪙)`;
     b.textContent='ЗАКРЫТЬ'; b.disabled=false; b.onclick=()=>{ closeModal(); caseBusy=false; };
