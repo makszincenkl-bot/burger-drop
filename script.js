@@ -54,6 +54,7 @@ function vibrate(ms) { if (navigator.vibrate) navigator.vibrate(ms); }
 
 function initBg(){
   const layer = document.getElementById('bgLayer');
+  if(!layer) return;
   const g1 = document.createElement('div'); g1.className = 'bg-glow g1'; layer.appendChild(g1);
   const g2 = document.createElement('div'); g2.className = 'bg-glow g2'; layer.appendChild(g2);
   const g3 = document.createElement('div'); g3.className = 'bg-glow g3'; layer.appendChild(g3);
@@ -77,12 +78,12 @@ const authScreen=$('authScreen'),regScreen=$('regScreen'),gameScreen=$('gameScre
 
 function updateBalance(){ const u=current(); if(!u)return; $('balance').textContent = u.coins; updateUpgraderPreview(); }
 function showAuth(){ gameScreen.style.display='none'; regScreen.style.display='none'; authScreen.style.display='flex'; }
-$('showReg').onclick=()=>{authScreen.style.display='none';regScreen.style.display='flex'};
-$('showLogin').onclick=showAuth;
+if($('showReg')) $('showReg').onclick=()=>{authScreen.style.display='none';regScreen.style.display='flex'};
+if($('showLogin')) $('showLogin').onclick=showAuth;
 
-$('loginBtn').onclick=async()=>{ const email=$('loginUser').value.trim(), pass=$('loginPass').value; $('loginErr').textContent='Загрузка...'; try { await signInWithEmailAndPassword(auth, email, pass); } catch(e) { $('loginErr').textContent='Ошибка входа'; } };
-$('regBtn').onclick=async()=>{ const email=$('regUser').value.trim(), pass=$('regPass').value; if(pass.length<6){$('regErr').textContent='Пароль минимум 6 символов';return} $('regErr').textContent='Создание...'; try { const cred = await createUserWithEmailAndPassword(auth, email, pass); await setDoc(doc(db, "users", cred.user.uid), { email: email, coins: 100, isAdmin: true, forcedChance: null, inventory: [], activeItem: null }); } catch(e) { $('regErr').textContent='Ошибка: ' + (e.code==='auth/email-already-in-use'?'Email занят':'Проверьте данные'); } };
-$('logoutBtn').onclick=()=>signOut(auth);
+if($('loginBtn')) $('loginBtn').onclick=async()=>{ const email=$('loginUser').value.trim(), pass=$('loginPass').value; $('loginErr').textContent='Загрузка...'; try { await signInWithEmailAndPassword(auth, email, pass); } catch(e) { $('loginErr').textContent='Ошибка входа'; } };
+if($('regBtn')) $('regBtn').onclick=async()=>{ const email=$('regUser').value.trim(), pass=$('regPass').value; if(pass.length<6){$('regErr').textContent='Пароль минимум 6 символов';return} $('regErr').textContent='Создание...'; try { const cred = await createUserWithEmailAndPassword(auth, email, pass); await setDoc(doc(db, "users", cred.user.uid), { email: email, coins: 100, isAdmin: true, forcedChance: null, inventory: [], activeItem: null }); } catch(e) { $('regErr').textContent='Ошибка: ' + (e.code==='auth/email-already-in-use'?'Email занят':'Проверьте данные'); } };
+if($('logoutBtn')) $('logoutBtn').onclick=()=>signOut(auth);
 
 onAuthStateChanged(auth, (user) => {
   if(user){
@@ -109,7 +110,8 @@ onAuthStateChanged(auth, (user) => {
 
 function enterGame(){
   authScreen.style.display='none'; regScreen.style.display='none'; gameScreen.style.display='block';
-  const u=current(); $('userName').textContent=u.email+(u.isAdmin?' 🛡':''); $('adminTab').style.display=u.isAdmin?'inline-block':'none';
+  const u=current(); if($('userName')) $('userName').textContent=u.email+(u.isAdmin?' 🛡':''); 
+  if($('adminTab')) $('adminTab').style.display=u.isAdmin?'inline-block':'none';
   updateBalance(); renderCases(); renderInventorySelect(); renderInventory(); if(u.isAdmin)fillAllSelects();
 }
 
@@ -143,7 +145,7 @@ function renderInventorySelect() {
   }
 }
 
-$('upgradeItem').onchange = () => { updateUpgraderPreview(); };
+if($('upgradeItem')) $('upgradeItem').onchange = () => { updateUpgraderPreview(); };
 
 function getSelectedItem() {
   const val = $('upgradeItem').value;
@@ -163,10 +165,10 @@ function updateUpgraderPreview() {
   $('winPreview').textContent = '+' + Math.floor(bet * mult) + (item && item.isCoins ? ' 🪙' : ' (Предмет)');
 }
 
-$('chance').addEventListener('input', updateUpgraderPreview);
+if($('chance')) $('chance').addEventListener('input', updateUpgraderPreview);
 
-$('spinBtn').onclick = () => doUpgrade(false);
-$('fastSpinBtn').onclick = () => doUpgrade(true);
+if($('spinBtn')) $('spinBtn').onclick = () => doUpgrade(false);
+if($('fastSpinBtn')) $('fastSpinBtn').onclick = () => doUpgrade(true);
 
 let currentRotation = 0, spinning = false;
 
@@ -175,7 +177,7 @@ function spinNeedle(targetAngle, onDone, fast) {
   const desired = ((targetAngle % 360) + 360) % 360;
   const delta = (desired - currentMod + 360) % 360;
   currentRotation += (fast ? 2 : 4) * 360 + delta;
-  $('needle').style.transform = 'rotate(' + (currentRotation - 90) + 'deg)';
+  if($('needle')) $('needle').style.transform = 'rotate(' + (currentRotation - 90) + 'deg)';
   setTimeout(onDone, fast ? 1000 : 5000);
 }
 
@@ -193,7 +195,7 @@ async function doUpgrade(isFast) {
   const mult = 100 / chance;
 
   spinning = true;
-  $('spinBtn').disabled = true; $('fastSpinBtn').disabled = true;
+  if($('spinBtn')) $('spinBtn').disabled = true; if($('fastSpinBtn')) $('fastSpinBtn').disabled = true;
 
   if(item.isCoins) {
       if(u.coins < betAmount) { spinning = false; $('spinBtn').disabled=false; $('fastSpinBtn').disabled=false; return; }
@@ -230,7 +232,7 @@ async function doUpgrade(isFast) {
       $('result').className = 'result lose';
     }
     spinning = false;
-    $('spinBtn').disabled = false; $('fastSpinBtn').disabled = false;
+    if($('spinBtn')) $('spinBtn').disabled = false; if($('fastSpinBtn')) $('fastSpinBtn').disabled = false;
   }, isFast);
 }
 
@@ -260,7 +262,7 @@ function renderInventory() {
   list.innerHTML = html;
 }
 
-$('sellAllBtn').onclick = async () => {
+if($('sellAllBtn')) $('sellAllBtn').onclick = async () => {
   const u = current();
   if(!u || !u.inventory || u.inventory.length === 0) return;
   
@@ -288,7 +290,7 @@ function getMinesMultiplier() {
   return mult * 0.97;
 }
 
-$('minesStartBtn').onclick = async () => {
+if($('minesStartBtn')) $('minesStartBtn').onclick = async () => {
   if(minesActive) return;
   const u = current(); if(!u) return;
   minesBet = parseInt($('minesBet').value);
@@ -359,11 +361,11 @@ async function cashoutMines() {
     if(minesGrid[i] && !c.classList.contains('opened')) { c.classList.add('opened', 'bomb'); c.textContent = '💣'; }
   });
 }
-$('minesCashoutBtn').onclick = cashoutMines;
+if($('minesCashoutBtn')) $('minesCashoutBtn').onclick = cashoutMines;
 
 // ====== КРАШ ======
 let crashActive = false, crashMult = 1, crashTimer = null, crashBet = 0, crashAutoStop = 0;
-$('crashStartBtn').onclick = async () => {
+if($('crashStartBtn')) $('crashStartBtn').onclick = async () => {
   if(crashActive) return;
   const u = current(); if(!u) return;
   crashBet = parseInt($('crashBet').value);
@@ -423,7 +425,7 @@ function totalW(items){return items.reduce((s,i)=>s+i.w,0)}
 function pickPrize(items){let r=Math.random()*totalW(items);for(const i of items){if(r<i.w)return i;r-=i.w}return items[items.length-1]}
 
 function renderCases(){
-  const grid=$('caseGrid'); grid.innerHTML='';
+  const grid=$('caseGrid'); if(!grid) return; grid.innerHTML='';
   CASES.forEach(c=>{
     const d=document.createElement('div'); d.className='case-tile';
     d.innerHTML=`<div class="emoji">${c.emoji}</div><div class="name">${c.name}</div><div class="price">${c.price} 🪙</div>`;
@@ -481,7 +483,7 @@ async function spinCase(c){
 }
 
 // ====== ПОДДЕРЖКА ======
-$('supportBtn').onclick = () => {
+if($('supportBtn')) $('supportBtn').onclick = () => {
   $('supportModal').classList.add('active');
   if(current() && current().isAdmin) {
     $('playerChatView').style.display = 'none'; $('adminChatView').style.display = 'flex';
@@ -509,7 +511,7 @@ function listenToMyTickets() {
   });
 }
 
-$('supportSendBtn').onclick = async () => {
+if($('supportSendBtn')) $('supportSendBtn').onclick = async () => {
   const u = current(); const text = $('supportInput').value.trim();
   if(!u || !text) return;
   await addDoc(collection(db, "tickets"), { uid: u.uid, email: u.email, text: text, from: 'player', time: Date.now() });
@@ -530,7 +532,7 @@ function listenToAllTickets() {
   });
 }
 
-$('adminTicketSelect').onchange = async (e) => {
+if($('adminTicketSelect')) $('adminTicketSelect').onchange = async (e) => {
   const targetUid = e.target.value; const box = $('adminTicketsList');
   if(!targetUid) { box.innerHTML = ''; return; }
   const q = query(collection(db, "tickets"), where("uid", "==", targetUid));
@@ -545,7 +547,7 @@ $('adminTicketSelect').onchange = async (e) => {
   box.scrollTop = box.scrollHeight;
 };
 
-$('adminTicketSendBtn').onclick = async () => {
+if($('adminTicketSendBtn')) $('adminTicketSendBtn').onclick = async () => {
   const u = current(); const targetUid = $('adminTicketSelect').value; const text = $('adminTicketInput').value.trim();
   if(!u || !u.isAdmin || !targetUid || !text) return;
   await addDoc(collection(db, "tickets"), { uid: targetUid, email: 'admin', text: text, from: 'admin', time: Date.now() });
@@ -559,7 +561,7 @@ async function fillAllSelects(){
   const selChance = $('adminChanceTarget'); if(selChance) selChance.innerHTML = '';
   snap.forEach(doc => { const d = doc.data(); if(!d.isAdmin && selChance) selChance.innerHTML += `<option value="${doc.id}">${d.email}</option>`; });
 }
-$('adminGiveBtn').onclick = async () => {
+if($('adminGiveBtn')) $('adminGiveBtn').onclick = async () => {
   const email=$('adminTarget').value.trim(), amt=parseInt($('adminCoins').value);
   if(!email||!amt) return;
   const snap = await getDocs(query(collection(db, "users"), where("email", "==", email)));
@@ -567,8 +569,8 @@ $('adminGiveBtn').onclick = async () => {
   snap.forEach(async d => { await updateDoc(doc(db,"users",d.id),{coins:increment(amt)}); });
   $('adminGiveLog').textContent='Выдано!';
 };
-$('adminChanceBtn').onclick = async () => { const id=$('adminChanceTarget').value, val=parseFloat($('adminChanceValue').value); if(id && val>0) { await updateDoc(doc(db,"users",id),{forcedChance:val}); $('adminChanceLog').textContent='Шанс задан!'; } };
-$('adminChanceResetBtn').onclick = async () => { const id=$('adminChanceTarget').value; if(id) { await updateDoc(doc(db,"users",id),{forcedChance:null}); $('adminChanceLog').textContent='Сброшено!'; } };
+if($('adminChanceBtn')) $('adminChanceBtn').onclick = async () => { const id=$('adminChanceTarget').value, val=parseFloat($('adminChanceValue').value); if(id && val>0) { await updateDoc(doc(db,"users",id),{forcedChance:val}); $('adminChanceLog').textContent='Шанс задан!'; } };
+if($('adminChanceResetBtn')) $('adminChanceResetBtn').onclick = async () => { const id=$('adminChanceTarget').value; if(id) { await updateDoc(doc(db,"users",id),{forcedChance:null}); $('adminChanceLog').textContent='Сброшено!'; } };
 
 // ====== ПОПОЛНЕНИЕ ======
 if($('btnCrypto')) $('btnCrypto').onclick = () => { const box = $('cryptoBox'); box.style.display = box.style.display === 'none' ? 'block' : 'none'; };
