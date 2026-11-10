@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, updateDoc, onSnapshot, collection, getDocs, query, where, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, updateDoc, onSnapshot, collection, getDocs, query, where, increment, addDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBT4O2-PZ-7k4-q1Rv8pQVjeRoBbGzQSao",
@@ -18,6 +18,8 @@ const db = getFirestore(app);
 const $=id=>document.getElementById(id);
 let currentUser = null;
 let unsubscribeSnap = null;
+let unsubscribeTickets = null;
+let unsubscribeAdminTickets = null;
 
 function current(){ return currentUser; }
 
@@ -34,14 +36,6 @@ async function saveInventory() {
       coins: currentUser.coins, inventory: currentUser.inventory, activeItem: currentUser.activeItem
     }); 
   } catch(e) { console.error("Ошибка инвентаря:", e); }
-}
-
-function flashScreen(color) {
-  const flash = document.createElement('div');
-  flash.style.cssText = `position:fixed;inset:0;background:${color};z-index:9999;pointer-events:none;opacity:0;transition:opacity 0.5s ease-out;`;
-  document.body.appendChild(flash);
-  setTimeout(() => flash.style.opacity = '0.7', 10);
-  setTimeout(() => { flash.style.opacity = '0'; setTimeout(() => flash.remove(), 500); }, 400);
 }
 
 function playSound(type) {
@@ -79,23 +73,9 @@ function initBg(){
 }
 initBg();
 
-const authScreen=$('authScreen'),regScreen=$('regScreen'),gameScreen=$('gameScreen'),betEl=$('bet'),chanceEl=$('chance'),spinBtn=$('spinBtn'),wheelEl=$('wheel'),resultEl=$('result'),multPreview=$('multPreview'),winPreview=$('winPreview'),needleEl=$('needle'),hubText=$('hubText');
+const authScreen=$('authScreen'),regScreen=$('regScreen'),gameScreen=$('gameScreen');
 
-const ALL_ITEMS = [
-  { name: 'Хлеб', emoji: '🍞', val: 2 }, { name: 'Салат', emoji: '🥬', val: 5 }, 
-  { name: 'Томат', emoji: '🍅', val: 10 }, { name: 'Лук', emoji: '🧅', val: 15 }, 
-  { name: 'Курица', emoji: '🐔', val: 25 }, { name: 'Сыр', emoji: '🧀', val: 40 }, 
-  { name: 'Мясо', emoji: '🥩', val: 50 }, { name: 'Бекон', emoji: '🥓', val: 100 }, 
-  { name: 'Перец', emoji: '🌶️', val: 150 }, { name: 'Алмаз', emoji: '💎', val: 400 },
-  { name: 'Bayonet', emoji: '🗡️', val: 800 }, { name: 'Flip Knife', emoji: '🔪', val: 1500 },
-  { name: 'Stiletto Knife', emoji: '⚔️', val: 3000 }, { name: 'Butterfly Knife', emoji: '🦋', val: 6000 }
-];
-
-function activeStack(){ const u = current(); if(!u || !u.activeItem) return null; return u.inventory.find(i => i.name === u.activeItem.name) || null; }
-function currencyCount(u = current()){ if(!u) return 0; const item = activeStack(u); return item ? (item.count || 0) : u.coins; }
-function currencyIcon(u = current()){ return u && u.activeItem ? u.activeItem.emoji : '🪙'; }
-
-function updateBalance(){ const u=current(); if(!u)return; $('balance').textContent = u.coins; updatePreview(); }
+function updateBalance(){ const u=current(); if(!u)return; $('balance').textContent = u.coins; updateUpgraderPreview(); }
 function showAuth(){ gameScreen.style.display='none'; regScreen.style.display='none'; authScreen.style.display='flex'; }
 $('showReg').onclick=()=>{authScreen.style.display='none';regScreen.style.display='flex'};
 $('showLogin').onclick=showAuth;
@@ -111,8 +91,17 @@ onAuthStateChanged(auth, (user) => {
       if(snap.exists()){
         const d = snap.data();
         currentUser = { uid: user.uid, email: d.email, coins: d.coins??100, isAdmin: true, forcedChance: d.forcedChance??null, inventory: d.inventory??[], activeItem: d.activeItem??null };
-        if(gameScreen.style.display === 'block') { updateBalance(); renderInventorySelect(); } else { enterGame(); }
+        
+        if(gameScreen.style.display === 'block') { 
+            updateBalance(); 
+            renderInventorySelect();
+            renderInventory();
+        } else { 
+            enterGame(); 
+        }
         if(currentUser.isAdmin) fillAllSelects();
+        listenToMyTickets();
+        if(currentUser.isAdmin) listenToAllTickets();
       }
     });
   } else { currentUser = null; if(unsubscribeSnap) unsubscribeSnap(); showAuth(); }
@@ -121,212 +110,319 @@ onAuthStateChanged(auth, (user) => {
 function enterGame(){
   authScreen.style.display='none'; regScreen.style.display='none'; gameScreen.style.display='block';
   const u=current(); $('userName').textContent=u.email+(u.isAdmin?' 🛡':''); $('adminTab').style.display=u.isAdmin?'inline-block':'none';
-  updateBalance(); renderCases(); updateClickerUI(); updateHub(); renderInventorySelect(); if(u.isAdmin)fillAllSelects();
+  updateBalance(); renderCases(); renderInventorySelect(); renderInventory(); if(u.isAdmin)fillAllSelects();
 }
+
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');$('panel-'+t.dataset.panel).classList.add('active');}));
+
+// ====== АПГРЕЙДЕР ======
+const ALL_ITEMS = [
+  { name: 'Хлеб', emoji: '🍞', val: 2, img: 'bread.png' }, { name: 'Салат', emoji: '🥬', val: 5, img: 'salat.png' }, 
+  { name: 'Томат', emoji: '🍅', val: 10, img: 'tomat.png' }, { name: 'Лук', emoji: '🧅', val: 15, img: 'luk.png' }, 
+  { name: 'Курица', emoji: '🐔', val: 25, img: 'chicken.png' }, { name: 'Сыр', emoji: '🧀', val: 40, img: 'cheese.png' }, 
+  { name: 'Мясо', emoji: '🥩', val: 50, img: 'meat.png' }, { name: 'Бекон', emoji: '🥓', val: 100, img: 'bacon.png' }, 
+  { name: 'Перец', emoji: '🌶️', val: 150, img: 'pepper.png' }, { name: 'Алмаз', emoji: '💎', val: 400, img: 'diamond.png' },
+  { name: 'AK-47', emoji: '🔫', val: 800, img: 'ak47.png' }, { name: 'AWP', emoji: '🎯', val: 1500, img: 'awp.png' },
+  { name: 'Bayonet', emoji: '🗡️', val: 3000, img: 'bayonet.png' }, { name: 'Butterfly Knife', emoji: '🦋', val: 6000, img: 'butterfly.png' }
+];
 
 function renderInventorySelect() {
   const sel = $('upgradeItem'); if(!sel) return;
   const u = current();
-  sel.innerHTML = '<option value="">-- Выберите предмет --</option>';
+  let currentVal = sel.value;
+  
+  sel.innerHTML = '<option value="coins">🪙 Монеты (Весь баланс)</option>';
   if(u && u.inventory && u.inventory.length > 0) {
     u.inventory.forEach(item => { sel.innerHTML += `<option value="${item.name}">${item.emoji} ${item.name} (x${item.count}) - ${item.val}🪙</option>`; });
   }
-  if(u && u.activeItem) sel.value = u.activeItem.name;
-}
-
-$('upgradeItem').onchange = (e) => {
-  const name = e.target.value; const u = current(); if(!u) return;
-  if(!name) { u.activeItem = null; } 
-  else {
-    const item = u.inventory.find(i => i.name === name);
-    if(item) u.activeItem = { name: item.name, emoji: item.emoji, val: item.val };
+  
+  if(currentVal && (currentVal === 'coins' || (u && u.inventory.find(i=>i.name===currentVal)))) {
+      sel.value = currentVal;
+  } else {
+      sel.value = 'coins';
   }
-  saveInventory(); updatePreview();
-};
-
-document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');$('panel-'+t.dataset.panel).classList.add('active');if(t.dataset.panel==='game'){purpleActive=false;goldActive=false;updatePreview();drawWheel(getEffectiveChance());}}));
-
-let currentRotation=0, spinning=false, bonusMode=false, bonusStreak=0, purpleActive=false, goldActive=false;
-
-function getEffectiveChance(){const u=current();if(u&&u.forcedChance!==null&&u.forcedChance!==undefined)return Number(u.forcedChance);return Math.min(99,Math.max(.1,parseFloat(chanceEl.value)||50))}
-function updateHub(){if(bonusMode){hubText.className='hub-text streak';hubText.textContent='x'+bonusStreak}else{hubText.className='hub-text';hubText.textContent=getEffectiveChance()+'%'}}
-
-function drawWheel(chance){
-  const gd=chance*3.6, gs=180-gd/2, ge=180+gd/2;
-  let stops=`#2a1a0a 0deg,#3a2410 ${gs}deg,#4ca832 ${gs}deg,#7ee06b 180deg,#3d8f27 ${ge}deg,#1a0f05 ${ge}deg,#2a1a0a 360deg`;
-  if(purpleActive){ stops=`#2a1a0a 0deg,#3a2410 ${gs}deg,#4ca832 ${gs}deg,#7ee06b 172.5deg,#9b4dca 172.5deg,#c77dff 180deg,#7b2cbf 187.5deg,#7ee06b 187.5deg,#3d8f27 ${ge}deg,#1a0f05 ${ge}deg,#2a1a0a 360deg`; }
-  if(goldActive){ stops=`#2a1a0a 0deg,#3a2410 ${gs}deg,#4ca832 ${gs}deg,#7ee06b 172.5deg,#ffcc00 172.5deg,#ffea00 180deg,#b38f00 187.5deg,#7ee06b 187.5deg,#3d8f27 ${ge}deg,#1a0f05 ${ge}deg,#2a1a0a 360deg`; }
-  wheelEl.style.background=`conic-gradient(from 0deg,${stops})`;
 }
 
-function updatePreview(){
-  if(!betEl)return;
+$('upgradeItem').onchange = () => { updateUpgraderPreview(); };
+
+function getSelectedItem() {
+  const val = $('upgradeItem').value;
+  if(val === 'coins') return { name: 'Монеты', emoji: '🪙', val: current().coins, isCoins: true };
   const u = current();
-  const bet = u ? currencyCount(u) : 0;
-  const chance = getEffectiveChance();
-  const mult = 100/chance;
-  multPreview.textContent='x'+(mult>=100?mult.toFixed(0):mult.toFixed(2));
-  winPreview.textContent='+'+Math.floor(bet*mult) + ' ' + currencyIcon(u);
-  if(!purpleActive&&!goldActive&&!bonusMode)drawWheel(chance);
-  updateHub();
-}
-chanceEl.addEventListener('input',()=>{purpleActive=false;goldActive=false;updatePreview();drawWheel(getEffectiveChance())});
-
-function spinNeedle(targetAngle,onDone,fast){
-  const currentMod=((currentRotation%360)+360)%360,desired=((targetAngle%360)+360)%360,delta=(desired-currentMod+360)%360;
-  currentRotation+= (fast?2:4)*360+delta; needleEl.style.transform='rotate('+(currentRotation-90)+'deg)';
-  setTimeout(onDone, fast ? 1000 : 5000); 
+  return u.inventory.find(i => i.name === val);
 }
 
-async function doSpin(isFast){
-  const u=current(); if(!u||spinning||bonusMode)return;
-  const bet = currencyCount(u);
-  const chance=getEffectiveChance();
-  const activeItem = u.activeItem;
-
-  if(!activeItem) { resultEl.className='result lose'; resultEl.textContent='Сначала выберите предмет для апгрейда!'; return; }
-  if(bet < 1) { resultEl.className='result lose'; resultEl.textContent='Нет предметов для ставки!'; return; }
+function updateUpgraderPreview() {
+  if(!$('upgradeItem')) return;
+  const item = getSelectedItem();
+  const chance = parseFloat($('chance').value) || 50;
+  const mult = 100 / chance;
+  const bet = item ? (item.isCoins ? item.val : item.val) : 0;
   
-  spinning=true; const normalBtn = $('spinBtn'), fastBtn = $('fastSpinBtn');
-  normalBtn.disabled=true; if(fastBtn) fastBtn.disabled=true;
+  $('multPreview').textContent = 'x' + (mult >= 100 ? mult.toFixed(0) : mult.toFixed(2));
+  $('winPreview').textContent = '+' + Math.floor(bet * mult) + (item && item.isCoins ? ' 🪙' : ' (Предмет)');
+}
 
-  const itemIndex = u.inventory.findIndex(i => i.name === activeItem.name);
-  if(itemIndex !== -1) {
-    u.inventory[itemIndex].count -= 1;
-    if(u.inventory[itemIndex].count <= 0) {
-      u.inventory.splice(itemIndex, 1);
-      u.activeItem = null;
-      $('upgradeItem').value = '';
-    }
+$('chance').addEventListener('input', updateUpgraderPreview);
+
+$('spinBtn').onclick = () => doUpgrade(false);
+$('fastSpinBtn').onclick = () => doUpgrade(true);
+
+let currentRotation = 0, spinning = false;
+
+function spinNeedle(targetAngle, onDone, fast) {
+  const currentMod = ((currentRotation % 360) + 360) % 360;
+  const desired = ((targetAngle % 360) + 360) % 360;
+  const delta = (desired - currentMod + 360) % 360;
+  currentRotation += (fast ? 2 : 4) * 360 + delta;
+  $('needle').style.transform = 'rotate(' + (currentRotation - 90) + 'deg)';
+  setTimeout(onDone, fast ? 1000 : 5000);
+}
+
+async function doUpgrade(isFast) {
+  const u = current();
+  if(!u || spinning) return;
+
+  const item = getSelectedItem();
+  if(!item) { $('result').textContent = 'Выберите предмет!'; $('result').className = 'result lose'; return; }
+  
+  const betAmount = item.isCoins ? item.val : item.val; 
+  if(betAmount < 1) { $('result').textContent = 'Недостаточно средств!'; $('result').className = 'result lose'; return; }
+
+  const chance = parseFloat($('chance').value) || 50;
+  const mult = 100 / chance;
+
+  spinning = true;
+  $('spinBtn').disabled = true; $('fastSpinBtn').disabled = true;
+
+  // Списываем ставку
+  if(item.isCoins) {
+      if(u.coins < betAmount) { spinning = false; $('spinBtn').disabled=false; $('fastSpinBtn').disabled=false; return; }
+      u.coins -= betAmount; updateBalance(); await addCoins(-betAmount);
+  } else {
+      const idx = u.inventory.findIndex(i => i.name === item.name);
+      u.inventory[idx].count--;
+      if(u.inventory[idx].count <= 0) u.inventory.splice(idx, 1);
+      renderInventorySelect(); renderInventory(); await saveInventory();
   }
-  updateBalance(); await saveInventory();
-  resultEl.textContent='';
+
+  $('result').textContent = '';
   
-  playSound('spin');
-  let roll = Math.random() * 100;
-  purpleActive = false; goldActive = false;
-  if (roll < 10) { purpleActive = true; }
-  else if (roll < 20) { goldActive = true; }
+  const angle = Math.random() * 360;
+  const win = Math.random() * 100 < chance;
   
-  let targetAngle = 0;
-  let outcome = 'lose';
-
-  if (purpleActive) { outcome = 'purple'; targetAngle = 180; }
-  else if (goldActive) { outcome = 'gold'; targetAngle = 180; }
-  else {
-    const gs=180-chance*1.8, ge=180+chance*1.8;
-    targetAngle = Math.random() * 360;
-    if (targetAngle >= 172.5 && targetAngle <= 187.5) targetAngle = 200; 
-    if (targetAngle >= gs && targetAngle <= ge) outcome = 'win';
-  }
-
-  drawWheel(chance); 
-  if(outcome !== 'win' && outcome !== 'lose') hubText.textContent='...';
-
-  spinNeedle(targetAngle, async ()=>{
-    purpleActive = false; goldActive = false;
-    drawWheel(getEffectiveChance());
-
-    if(outcome==='purple'){ resultEl.className='result bonus'; resultEl.textContent='🟣 БОНУС УДВОЕНИЯ!'; startBonus(); } 
-    else if (outcome==='gold') { resultEl.className='result bonus'; resultEl.textContent='🟡 ЗОЛОТОЙ БОНУС!'; startGoldBonus(); } 
-    else if(outcome==='win'){
-      const winVal = Math.floor(activeItem.val * (100/chance));
-      let prize = ALL_ITEMS.find(i => i.val >= winVal) || ALL_ITEMS[ALL_ITEMS.length-1];
-      
-      const old = u.inventory.find(i => i.name === prize.name);
-      if(old) old.count += 1;
-      else u.inventory.push({ name: prize.name, emoji: prize.emoji, val: prize.val, count: 1 });
-      
-      updateBalance(); renderInventorySelect(); await saveInventory();
-      
-      playSound('win'); vibrate([100, 50, 100]);
-      resultEl.className='result win'; resultEl.textContent=`🎁 УДАЧА! Выпало: ${prize.emoji} ${prize.name}`;
-      hubText.className='hub-text win'; hubText.textContent='УДАЧА';
-      spinning=false; normalBtn.disabled=false; if(fastBtn) fastBtn.disabled=false;
-      setTimeout(()=>{hubText.className='hub-text';updateHub()},1500);
+  spinNeedle(win ? 180 : 0, async () => { 
+    // 180 - это верх (зеленая зона), 0 - низ (черная зона)
+    if(win) {
+      if(item.isCoins) {
+        const winAmt = Math.floor(betAmount * mult);
+        u.coins += winAmt; updateBalance(); await addCoins(winAmt);
+        $('result').textContent = '🍔 УДАЧА! +' + winAmt + ' 🪙';
+      } else {
+        // Выдаем предмет
+        const targetVal = item.val * mult;
+        let prize = ALL_ITEMS.find(i => i.val >= targetVal) || ALL_ITEMS[ALL_ITEMS.length-1];
+        const old = u.inventory.find(i => i.name === prize.name);
+        if(old) old.count++; else u.inventory.push({ name: prize.name, emoji: prize.emoji, val: prize.val, count: 1 });
+        
+        renderInventorySelect(); renderInventory(); await saveInventory();
+        $('result').textContent = '🎁 УДАЧА! Выпало: ' + prize.emoji + ' ' + prize.name;
+      }
+      $('result').className = 'result win';
     } else {
-      playSound('lose'); vibrate(200);
-      resultEl.className='result lose'; resultEl.textContent='😢 НЕУДАЧА! Предмет сгорел.';
-      hubText.className='hub-text lose'; hubText.textContent='НЕУДАЧА';
-      spinning=false; normalBtn.disabled=false; if(fastBtn) fastBtn.disabled=false;
-      setTimeout(()=>{hubText.className='hub-text';updateHub()},1500);
+      $('result').textContent = '😢 НЕУДАЧА! Вы проиграли.';
+      $('result').className = 'result lose';
     }
+    spinning = false;
+    $('spinBtn').disabled = false; $('fastSpinBtn').disabled = false;
   }, isFast);
 }
 
-$('spinBtn').onclick=()=>doSpin(false);
-$('fastSpinBtn').onclick=()=>doSpin(true);
-
-function startBonus(){
-  bonusMode=true; bonusStreak=1; 
-  flashScreen('#9b4dca'); vibrate([200, 100, 200, 100, 500]);
-  $('bonusBarWrap').classList.add('active'); updateBonusBar();
-  resultEl.className='result bonus'; resultEl.textContent='🟣 БОНУС УДВОЕНИЯ!';
-  resultEl.style.fontSize = '20px'; resultEl.style.textShadow = '0 0 15px #c77dff';
-  setTimeout(runPurpleStep, 1500);
-}
-function updateBonusBar() { const bar = $('bonusBar'); const text = $('bonusBarText'); text.textContent = 'x' + bonusStreak; bar.style.width = Math.min(100, (bonusStreak / 6) * 100) + '%'; }
-function runPurpleStep(){
-  const u=current(); if(!u) { finishPurple(false); return; }
-  const win = Math.random() < 0.5, target = win ? 180 + (Math.random()-.5)*90 : Math.random()*180;
-  hubText.textContent='...'; hubText.className='hub-text streak';
-  spinNeedle(target, async () => {
-    if(win){ bonusStreak++; updateBonusBar(); resultEl.className='result win'; resultEl.textContent='🔥 Удача! Удвоение!'; hubText.textContent='x'+bonusStreak; setTimeout(runPurpleStep, 800); } 
-    else { finishPurple(true); }
-  }, true);
-}
-async function finishPurple(isWin){
-  bonusMode=false; $('bonusBarWrap').classList.remove('active');
-  const u=current();
-  if(u && bonusStreak > 0){
-    const bet = Math.floor(Number(betEl.value)) || 10;
-    const winAmt = bet * Math.pow(2, bonusStreak - 1);
-    if(isWin) { u.coins+=winAmt; await addCoins(winAmt); resultEl.className='result win'; resultEl.textContent=`🔥 БОНУС ЗАВЕРШЕН! Забрано: +${winAmt} 🪙`; } 
-    else {
-      const prevAmt = bonusStreak > 1 ? bet * Math.pow(2, bonusStreak - 2) : 0;
-      if(prevAmt > 0) { u.coins+=prevAmt; await addCoins(prevAmt); resultEl.className='result bonus'; resultEl.textContent=`Бонус окончен. Забрано: +${prevAmt} 🪙`; } 
-      else { resultEl.className='result lose'; resultEl.textContent='Бонус сгорел на первом шаге.'; }
-    }
-    updateBalance();
+// ====== ИНВЕНТАРЬ ======
+function renderInventory() {
+  const list = $('inventoryList');
+  const u = current();
+  if(!list || !u) return;
+  
+  if(!u.inventory || u.inventory.length === 0) {
+    list.innerHTML = '<div style="color: #b8d8a8; font-size: 13px; text-align: center; padding: 20px;">Инвентарь пуст. Откройте кейсы!</div>';
+    return;
   }
-  drawWheel(getEffectiveChance()); spinning=false; $('spinBtn').disabled=false; $('fastSpinBtn').disabled=false;
-  setTimeout(()=>{hubText.className='hub-text';updateHub()}, 1500);
+  
+  let html = '';
+  u.inventory.forEach(item => {
+    html += `
+      <div class="inv-item">
+        <div class="icon">${item.emoji}</div>
+        <div class="info">
+          <div class="nm">${item.name} ${item.count > 1 ? 'x' + item.count : ''}</div>
+          <div class="lvl">Цена: ${item.val} 🪙 за шт.</div>
+        </div>
+      </div>
+    `;
+  });
+  list.innerHTML = html;
 }
 
-function startGoldBonus(){
-  bonusMode=true; 
-  flashScreen('#ffcc00'); vibrate([300, 100, 300]);
-  resultEl.className='result bonus'; resultEl.textContent='🟡 ЗОЛОТОЙ БОНУС!';
-  resultEl.style.fontSize = '20px'; resultEl.style.textShadow = '0 0 15px #ffcc00';
-  const bet = Math.floor(Number(betEl.value)) || 10;
-  const items = [{mult: 1.5, chance: 50}, {mult: 2, chance: 25}, {mult: 3, chance: 15}, {mult: 5, chance: 9}, {mult: 10, chance: 1}];
-  let r = Math.random() * 100, winner = items[0];
-  for(let i of items) { if (r < i.chance) { winner = i; break; } r -= i.chance; }
+$('sellAllBtn').onclick = async () => {
+  const u = current();
+  if(!u || !u.inventory || u.inventory.length === 0) return;
+  
+  let totalValue = 0;
+  u.inventory.forEach(item => { totalValue += (item.val * item.count); });
+  
+  if(totalValue <= 0) return;
+  
+  u.coins += totalValue;
+  u.inventory = [];
+  
+  updateBalance(); renderInventory(); renderInventorySelect(); await saveInventory(); await addCoins(totalValue);
+  
+  playSound('win'); vibrate(100);
+  alert(`Вы продали весь инвентарь за ${totalValue} 🪙!`);
+};
 
-  setTimeout(async ()=>{
-    const totalWin = Math.floor(bet * winner.mult);
-    currentUser.coins += totalWin; await addCoins(totalWin); updateBalance();
-    resultEl.className='result win'; resultEl.textContent=`🟡 ИКС x${winner.mult}! Выигрыш: +${totalWin} 🪙`;
-    bonusMode=false; spinning=false; $('spinBtn').disabled=false; $('fastSpinBtn').disabled=false;
-    drawWheel(getEffectiveChance()); 
-  }, 2000);
+// ====== МИНЫ ======
+let minesActive = false, minesGrid = [], minesOpened = 0, minesBet = 0, minesCount = 3;
+function getMinesMultiplier() {
+  if(!minesActive) return 1;
+  const total = 25, safe = total - minesCount;
+  let mult = 1;
+  for(let i=0; i<minesOpened; i++) { mult *= (total - i) / (safe - i); }
+  return mult * 0.97;
 }
 
+$('minesStartBtn').onclick = async () => {
+  if(minesActive) return;
+  const u = current(); if(!u) return;
+  minesBet = parseInt($('minesBet').value);
+  minesCount = parseInt($('minesCount').value);
+  
+  if(minesBet < 1 || u.coins < minesBet) { $('minesStatus').textContent = 'Мало монет!'; $('minesStatus').style.color = '#ff6b4a'; return; }
+  
+  u.coins -= minesBet; updateBalance(); await addCoins(-minesBet);
+  
+  minesActive = true; minesOpened = 0;
+  $('minesStartBtn').style.display = 'none';
+  $('minesCashoutBtn').style.display = 'block';
+  $('minesCashoutBtn').textContent = `ЗАБРАТЬ (x1.00)`;
+  $('minesStatus').textContent = '';
+  
+  minesGrid = Array(25).fill(false);
+  let minesPlaced = 0;
+  while(minesPlaced < minesCount) {
+    let r = Math.floor(Math.random() * 25);
+    if(!minesGrid[r]) { minesGrid[r] = true; minesPlaced++; }
+  }
+  
+  const gridHTML = $('minesGrid'); gridHTML.innerHTML = '';
+  for(let i=0; i<25; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'mine-cell'; cell.dataset.index = i;
+    cell.onclick = () => openMineCell(i, cell);
+    gridHTML.appendChild(cell);
+  }
+};
+
+function openMineCell(index, cell) {
+  if(!minesActive || cell.classList.contains('opened')) return;
+  cell.classList.add('opened');
+  
+  if(minesGrid[index]) {
+    cell.classList.add('bomb'); cell.textContent = '💣';
+    playSound('lose'); vibrate(300);
+    $('minesStatus').textContent = 'Взрыв! Ставка сгорела.'; $('minesStatus').style.color = '#ff6b4a';
+    minesActive = false;
+    $('minesStartBtn').style.display = 'block'; $('minesCashoutBtn').style.display = 'none';
+    document.querySelectorAll('.mine-cell').forEach((c, i) => {
+      if(minesGrid[i] && !c.classList.contains('opened')) { c.classList.add('opened', 'bomb'); c.textContent = '💣'; }
+    });
+  } else {
+    cell.classList.add('star'); cell.textContent = '⭐';
+    minesOpened++;
+    const mult = getMinesMultiplier();
+    $('minesCashoutBtn').textContent = `ЗАБРАТЬ (x${mult.toFixed(2)})`;
+    playSound('win'); vibrate(20);
+    if(minesOpened === 25 - minesCount) cashoutMines();
+  }
+}
+
+async function cashoutMines() {
+  if(!minesActive || minesOpened === 0) return;
+  const mult = getMinesMultiplier();
+  const winAmt = Math.floor(minesBet * mult);
+  const u = current();
+  u.coins += winAmt; updateBalance(); await addCoins(winAmt);
+  
+  playSound('win'); vibrate([100, 50, 100]);
+  $('minesStatus').textContent = `Выигрыш: +${winAmt} 🪙 (x${mult.toFixed(2)})`; $('minesStatus').style.color = '#7ee06b';
+  
+  minesActive = false;
+  $('minesStartBtn').style.display = 'block'; $('minesCashoutBtn').style.display = 'none';
+  document.querySelectorAll('.mine-cell').forEach((c, i) => {
+    if(minesGrid[i] && !c.classList.contains('opened')) { c.classList.add('opened', 'bomb'); c.textContent = '💣'; }
+  });
+}
+$('minesCashoutBtn').onclick = cashoutMines;
+
+// ====== КРАШ ======
+let crashActive = false, crashMult = 1, crashTimer = null, crashBet = 0, crashAutoStop = 0;
+$('crashStartBtn').onclick = async () => {
+  if(crashActive) return;
+  const u = current(); if(!u) return;
+  crashBet = parseInt($('crashBet').value);
+  crashAutoStop = parseFloat($('crashAutoStop').value);
+  
+  if(crashBet < 1 || u.coins < crashBet) { $('crashStatus').textContent = 'Мало монет!'; $('crashStatus').style.color = '#ff6b4a'; return; }
+  
+  u.coins -= crashBet; updateBalance(); await addCoins(-crashBet);
+  
+  crashActive = true; crashMult = 1;
+  $('crashStartBtn').style.display = 'none';
+  $('crashStatus').textContent = 'Игра началась!'; $('crashStatus').style.color = '#b8d8a8';
+  
+  const crashPoint = 1 + (Math.random() * Math.random() * 10);
+  
+  crashTimer = setInterval(async () => {
+    crashMult += 0.02;
+    $('crashMultiplier').textContent = `x${crashMult.toFixed(2)}`;
+    
+    if(crashMult >= crashAutoStop) {
+      crashActive = false; clearInterval(crashTimer);
+      const winAmt = Math.floor(crashBet * crashAutoStop);
+      u.coins += winAmt; updateBalance(); await addCoins(winAmt);
+      playSound('win'); vibrate([100, 50, 100]);
+      $('crashStatus').textContent = `Авто-стоп! Выигрыш: +${winAmt} 🪙`; $('crashStatus').style.color = '#7ee06b';
+      $('crashStartBtn').style.display = 'block';
+      return;
+    }
+    
+    if(crashMult >= crashPoint) {
+      crashActive = false; clearInterval(crashTimer);
+      playSound('lose'); vibrate(300);
+      $('crashStatus').textContent = `КРАШ на x${crashMult.toFixed(2)}! Ставка сгорела.`; $('crashStatus').style.color = '#ff6b4a';
+      $('crashMultiplier').style.color = '#ff6b4a';
+      $('crashStartBtn').style.display = 'block';
+    }
+  }, 100);
+  $('crashMultiplier').style.color = '#7ee06b';
+};
+
+// ====== КЕЙСЫ ======
 const CASES=[
-{id:'1',name:'Чикен',price:20,emoji:'🍔',items:[{emoji:'🍞',name:'Хлеб',w:30,val:2},{emoji:'🥬',name:'Салат',w:25,val:5},{emoji:'🍅',name:'Томат',w:18,val:10},{emoji:'🧅',name:'Лук',w:12,val:15},{emoji:'🐔',name:'Курица',w:10,val:25},{emoji:'🧀',name:'Сыр',w:4,val:40},{emoji:'🗡️',name:'Bayonet',w:1,val:800}]},
-{id:'2',name:'Чизбургер',price:30,emoji:'🧀',items:[{emoji:'🍞',name:'Хлеб',w:28,val:3},{emoji:'🥬',name:'Салат',w:22,val:8},{emoji:'🍅',name:'Томат',w:18,val:15},{emoji:'🧀',name:'Сыр',w:15,val:30},{emoji:'🥩',name:'Мясо',w:10,val:50},{emoji:'🌶️',name:'Перец',w:6,val:70},{emoji:'🗡️',name:'Bayonet',w:1,val:800}]},
-{id:'3',name:'Двойной',price:50,emoji:'🍔🍔',items:[{emoji:'🍞',name:'Хлеб',w:25,val:5},{emoji:'🥩',name:'Мясо',w:22,val:15},{emoji:'🧀',name:'Сыр',w:20,val:25},{emoji:'🥬',name:'Салат',w:15,val:40},{emoji:'🍅',name:'Томат',w:10,val:70},{emoji:'🥓',name:'Бекон',w:6,val:100},{emoji:'🔪',name:'Flip Knife',w:2,val:1500}]},
-{id:'4',name:'Овощной',price:40,emoji:'🥗',items:[{emoji:'🥬',name:'Салат',w:28,val:4},{emoji:'🍅',name:'Томат',w:25,val:10},{emoji:'🥒',name:'Огурец',w:20,val:20},{emoji:'🧅',name:'Лук',w:12,val:35},{emoji:'🥑',name:'Авокадо',w:9,val:60},{emoji:'🌶️',name:'Перец',w:5,val:90},{emoji:'🔪',name:'Flip Knife',w:1,val:1500}]},
-{id:'5',name:'Салат',price:35,emoji:'🥬',items:[{emoji:'🥬',name:'Листья',w:32,val:3},{emoji:'🥒',name:'Огурец',w:25,val:10},{emoji:'🍅',name:'Томат',w:18,val:22},{emoji:'🧅',name:'Лук',w:12,val:40},{emoji:'🥑',name:'Авокадо',w:8,val:60},{emoji:'🥓',name:'Бекон',w:4,val:90},{emoji:'🔪',name:'Flip Knife',w:1,val:1500}]},
-{id:'6',name:'Биг Хит',price:80,emoji:'💥',items:[{emoji:'🍞',name:'Хлеб',w:22,val:10},{emoji:'🥩',name:'Мясо',w:20,val:25},{emoji:'🧀',name:'Сыр',w:18,val:50},{emoji:'🥓',name:'Бекон',w:15,val:80},{emoji:'🍅',name:'Томат',w:12,val:120},{emoji:'🌶️',name:'Перец',w:8,val:170},{emoji:'💎',name:'Алмаз',w:4,val:200},{emoji:'⚔️',name:'Stiletto Knife',w:1,val:3000}]},
-{id:'7',name:'Дв. Биг',price:120,emoji:'💥💥',items:[{emoji:'🍞',name:'Хлеб',w:20,val:15},{emoji:'🥩',name:'Мясо',w:18,val:40},{emoji:'🧀',name:'Сыр',w:17,val:80},{emoji:'🥓',name:'Бекон',w:15,val:130},{emoji:'🍅',name:'Томат',w:12,val:200},{emoji:'🌶️',name:'Перец',w:9,val:280},{emoji:'💎',name:'Алмаз',w:6,val:330},{emoji:'⚔️',name:'Stiletto Knife',w:3,val:3000}]},
-{id:'8',name:'Мега',price:150,emoji:'🍔',items:[{emoji:'🍞',name:'Хлеб',w:18,val:20},{emoji:'🥩',name:'Мясо',w:17,val:60},{emoji:'🧀',name:'Сыр',w:16,val:120},{emoji:'🥓',name:'Бекон',w:14,val:200},{emoji:'🍅',name:'Томат',w:12,val:300},{emoji:'🌶️',name:'Перец',w:10,val:380},{emoji:'💎',name:'Алмаз',w:9,val:420},{emoji:'🦋',name:'Butterfly Knife',w:4,val:6000}]},
-{id:'9',name:'Король',price:200,emoji:'👑',items:[{emoji:'🍞',name:'Хлеб',w:16,val:30},{emoji:'🥩',name:'Мясо',w:16,val:100},{emoji:'🧀',name:'Сыр',w:15,val:200},{emoji:'🥓',name:'Бекон',w:14,val:300},{emoji:'🍅',name:'Томат',w:13,val:400},{emoji:'👑',name:'Корона',w:10,val:500},{emoji:'💎',name:'Алмаз',w:12,val:560},{emoji:'🦋',name:'Butterfly Knife',w:4,val:6000}]},
-{id:'10',name:'Легенда',price:300,emoji:'🏆',items:[{emoji:'🍞',name:'Хлеб',w:14,val:50},{emoji:'🥩',name:'Мясо',w:14,val:150},{emoji:'🧀',name:'Сыр',w:13,val:300},{emoji:'🥓',name:'Бекон',w:13,val:450},{emoji:'🍅',name:'Томат',w:12,val:600},{emoji:'👑',name:'Корона',w:12,val:750},{emoji:'💎',name:'Алмаз',w:14,val:850},{emoji:'🦋',name:'Butterfly Knife',w:8,val:6000}]}
+{id:'1',name:'Чикен',price:20,emoji:'🍔',items:[{emoji:'🍞',name:'Хлеб',w:30,val:2,img:'bread.png'},{emoji:'🥬',name:'Салат',w:25,val:5,img:'salat.png'},{emoji:'🍅',name:'Томат',w:18,val:10,img:'tomat.png'},{emoji:'🧅',name:'Лук',w:12,val:15,img:'luk.png'},{emoji:'🐔',name:'Курица',w:10,val:25,img:'chicken.png'},{emoji:'🧀',name:'Сыр',w:4,val:40,img:'cheese.png'},{emoji:'🔫',name:'AK-47',w:1,val:800,img:'ak47.png'}]},
+{id:'2',name:'Чизбургер',price:30,emoji:'🧀',items:[{emoji:'🍞',name:'Хлеб',w:28,val:3,img:'bread.png'},{emoji:'🥬',name:'Салат',w:22,val:8,img:'salat.png'},{emoji:'🍅',name:'Томат',w:18,val:15,img:'tomat.png'},{emoji:'🧀',name:'Сыр',w:15,val:30,img:'cheese.png'},{emoji:'🥩',name:'Мясо',w:10,val:50,img:'meat.png'},{emoji:'🌶️',name:'Перец',w:6,val:70,img:'pepper.png'},{emoji:'🎯',name:'AWP',w:1,val:1500,img:'awp.png'}]},
+{id:'3',name:'Двойной',price:50,emoji:'🍔🍔',items:[{emoji:'🍞',name:'Хлеб',w:25,val:5,img:'bread.png'},{emoji:'🥩',name:'Мясо',w:22,val:15,img:'meat.png'},{emoji:'🧀',name:'Сыр',w:20,val:25,img:'cheese.png'},{emoji:'🥬',name:'Салат',w:15,val:40,img:'salat.png'},{emoji:'🍅',name:'Томат',w:10,val:70,img:'tomat.png'},{emoji:'🥓',name:'Бекон',w:6,val:100,img:'bacon.png'},{emoji:'🗡️',name:'Bayonet',w:2,val:3000,img:'bayonet.png'}]},
+{id:'4',name:'Овощной',price:40,emoji:'🥗',items:[{emoji:'🥬',name:'Салат',w:28,val:4,img:'salat.png'},{emoji:'🍅',name:'Томат',w:25,val:10,img:'tomat.png'},{emoji:'🥒',name:'Огурец',w:20,val:20,img:'cucumber.png'},{emoji:'🧅',name:'Лук',w:12,val:35,img:'luk.png'},{emoji:'🥑',name:'Авокадо',w:9,val:60,img:'avocado.png'},{emoji:'🌶️',name:'Перец',w:5,val:90,img:'pepper.png'},{emoji:'🗡️',name:'Bayonet',w:1,val:3000,img:'bayonet.png'}]},
+{id:'5',name:'Салат',price:35,emoji:'🥬',items:[{emoji:'🥬',name:'Листья',w:32,val:3,img:'salat.png'},{emoji:'🥒',name:'Огурец',w:25,val:10,img:'cucumber.png'},{emoji:'🍅',name:'Томат',w:18,val:22,img:'tomat.png'},{emoji:'🧅',name:'Лук',w:12,val:40,img:'luk.png'},{emoji:'🥑',name:'Авокадо',w:8,val:60,img:'avocado.png'},{emoji:'🥓',name:'Бекон',w:4,val:90,img:'bacon.png'},{emoji:'🔫',name:'AK-47',w:1,val:800,img:'ak47.png'}]},
+{id:'6',name:'Биг Хит',price:80,emoji:'💥',items:[{emoji:'🍞',name:'Хлеб',w:22,val:10,img:'bread.png'},{emoji:'🥩',name:'Мясо',w:20,val:25,img:'meat.png'},{emoji:'🧀',name:'Сыр',w:18,val:50,img:'cheese.png'},{emoji:'🥓',name:'Бекон',w:15,val:80,img:'bacon.png'},{emoji:'🍅',name:'Томат',w:12,val:120,img:'tomat.png'},{emoji:'🌶️',name:'Перец',w:8,val:170,img:'pepper.png'},{emoji:'💎',name:'Алмаз',w:4,val:200,img:'diamond.png'},{emoji:'🎯',name:'AWP',w:1,val:1500,img:'awp.png'}]},
+{id:'7',name:'Дв. Биг',price:120,emoji:'💥💥',items:[{emoji:'🍞',name:'Хлеб',w:20,val:15,img:'bread.png'},{emoji:'🥩',name:'Мясо',w:18,val:40,img:'meat.png'},{emoji:'🧀',name:'Сыр',w:17,val:80,img:'cheese.png'},{emoji:'🥓',name:'Бекон',w:15,val:130,img:'bacon.png'},{emoji:'🍅',name:'Томат',w:12,val:200,img:'tomat.png'},{emoji:'🌶️',name:'Перец',w:9,val:280,img:'pepper.png'},{emoji:'💎',name:'Алмаз',w:6,val:330,img:'diamond.png'},{emoji:'🔫',name:'AK-47',w:3,val:800,img:'ak47.png'}]},
+{id:'8',name:'Мега',price:150,emoji:'🍔',items:[{emoji:'🍞',name:'Хлеб',w:18,val:20,img:'bread.png'},{emoji:'🥩',name:'Мясо',w:17,val:60,img:'meat.png'},{emoji:'🧀',name:'Сыр',w:16,val:120,img:'cheese.png'},{emoji:'🥓',name:'Бекон',w:14,val:200,img:'bacon.png'},{emoji:'🍅',name:'Томат',w:12,val:300,img:'tomat.png'},{emoji:'🌶️',name:'Перец',w:10,val:380,img:'pepper.png'},{emoji:'💎',name:'Алмаз',w:9,val:420,img:'diamond.png'},{emoji:'🦋',name:'Butterfly Knife',w:4,val:6000,img:'butterfly.png'}]},
+{id:'9',name:'Король',price:200,emoji:'👑',items:[{emoji:'🍞',name:'Хлеб',w:16,val:30,img:'bread.png'},{emoji:'🥩',name:'Мясо',w:16,val:100,img:'meat.png'},{emoji:'🧀',name:'Сыр',w:15,val:200,img:'cheese.png'},{emoji:'🥓',name:'Бекон',w:14,val:300,img:'bacon.png'},{emoji:'🍅',name:'Томат',w:13,val:400,img:'tomat.png'},{emoji:'👑',name:'Корона',w:10,val:500,img:'crown.png'},{emoji:'💎',name:'Алмаз',w:12,val:560,img:'diamond.png'},{emoji:'🦋',name:'Butterfly Knife',w:4,val:6000,img:'butterfly.png'}]},
+{id:'10',name:'Легенда',price:300,emoji:'🏆',items:[{emoji:'🍞',name:'Хлеб',w:14,val:50,img:'bread.png'},{emoji:'🥩',name:'Мясо',w:14,val:150,img:'meat.png'},{emoji:'🧀',name:'Сыр',w:13,val:300,img:'cheese.png'},{emoji:'🥓',name:'Бекон',w:13,val:450,img:'bacon.png'},{emoji:'🍅',name:'Томат',w:12,val:600,img:'tomat.png'},{emoji:'👑',name:'Корона',w:12,val:750,img:'crown.png'},{emoji:'💎',name:'Алмаз',w:14,val:850,img:'diamond.png'},{emoji:'🦋',name:'Butterfly Knife',w:8,val:6000,img:'butterfly.png'}]}
 ];
 
 let caseBusy = false;
-
 function totalW(items){return items.reduce((s,i)=>s+i.w,0)}
 function pickPrize(items){let r=Math.random()*totalW(items);for(const i of items){if(r<i.w)return i;r-=i.w}return items[items.length-1]}
 
@@ -366,7 +462,8 @@ async function spinCase(c){
   const cells=Array.from({length:40},()=>pickPrize(c.items)); cells[32]=winner;
   
   $('modalRouletteWrap').innerHTML='<div class="roulette-view"><div class="roulette-strip" id="strip"></div><div class="roulette-marker"></div></div>';
-  const strip=$('strip'); strip.innerHTML=cells.map(i=>`<div class="roulette-cell">${i.emoji}</div>`).join('');
+  const strip=$('strip'); 
+  strip.innerHTML=cells.map(i=>`<div class="roulette-cell">${i.emoji}</div>`).join('');
   playSound('spin');
   
   setTimeout(()=>{
@@ -376,31 +473,97 @@ async function spinCase(c){
   },50);
 
   setTimeout(async ()=>{
-    u.coins+=winner.val; updateBalance(); await addCoins(winner.val);
+    // Начисляем предмет в инвентарь
+    const old = u.inventory.find(i => i.name === winner.name);
+    if(old) old.count += 1; else u.inventory.push({ name: winner.name, emoji: winner.emoji, val: winner.val, count: 1 });
+    
+    updateBalance(); renderInventory(); renderInventorySelect(); await saveInventory();
+    
     playSound('win'); vibrate(100);
-    $('modalLog').textContent=`🎁 Выпало: ${winner.emoji} ${winner.name} (+${winner.val} 🪙)`;
+    $('modalLog').textContent=`🎁 Выпало: ${winner.emoji} ${winner.name} (${winner.val} 🪙)`;
     b.textContent='ЗАКРЫТЬ'; b.disabled=false; b.onclick=()=>{ closeModal(); caseBusy=false; };
   },3150);
 }
 
-let clicks=0,perClick=1,autoLevel=0,timer=null;
-function updateClickerUI(){$('perClick').textContent=perClick;$('clickCount').textContent=clicks}
-$('burgerClick').onclick=async ()=>{const u=current();if(!u)return;clicks++;u.coins+=perClick;updateBalance();updateClickerUI();vibrate(20);await addCoins(perClick);};
-$('buyAuto').onclick=async ()=>{if(autoLevel>=5)return;const cost=50*(autoLevel+1),u=current();if(u.coins<cost){$('clickerLog').textContent='Мало монет';return}u.coins-=cost;autoLevel++;perClick++;updateBalance();updateClickerUI();await addCoins(-cost);if(!timer)timer=setInterval(async ()=>{const cu=current();if(cu){cu.coins+=perClick;updateBalance();updateClickerUI();await addCoins(perClick);}},1000)};
+// ====== ПОДДЕРЖКА ======
+$('supportBtn').onclick = () => {
+  $('supportModal').classList.add('active');
+  if(current() && current().isAdmin) {
+    $('playerChatView').style.display = 'none'; $('adminChatView').style.display = 'flex';
+  } else {
+    $('playerChatView').style.display = 'flex'; $('adminChatView').style.display = 'none';
+  }
+};
 
-async function fillAllSelects(){
-  const snap = await getDocs(collection(db, "users"));
-  const selChance = $('adminChanceTarget'); const selTroll = $('adminTrollTarget');
-  if(selChance) selChance.innerHTML = ''; if(selTroll) selTroll.innerHTML = '';
-  snap.forEach(doc => { 
-    const d = doc.data(); 
-    if(!d.isAdmin) {
-      if(selChance) selChance.innerHTML += `<option value="${doc.id}">${d.email}</option>`;
-      if(selTroll) selTroll.innerHTML += `<option value="${doc.id}">${d.email}</option>`;
-    } 
+function listenToMyTickets() {
+  if(unsubscribeTickets) unsubscribeTickets();
+  const u = current(); if(!u) return;
+  const q = query(collection(db, "tickets"), where("uid", "==", u.uid));
+  unsubscribeTickets = onSnapshot(q, (snap) => {
+    const box = $('supportMessages'); if(!box) return;
+    if(!snap.empty) box.innerHTML = '';
+    let msgs = []; snap.forEach(d => msgs.push(d.data()));
+    msgs.sort((a,b) => (a.time || 0) - (b.time || 0));
+    if(msgs.length > 0) {
+      msgs.forEach(m => {
+        const isAdmin = m.from === 'admin';
+        box.innerHTML += `<div style="align-self: ${isAdmin ? 'flex-start' : 'flex-end'}; max-width: 80%; background: ${isAdmin ? '#2196F3' : '#4ca832'}; color: #fff; padding: 8px 12px; border-radius: 10px; font-size: 13px; margin-bottom: 5px; word-break: break-word;">${isAdmin ? '<b>Поддержка:</b><br>' : ''}${m.text}</div>`;
+      });
+      box.scrollTop = box.scrollHeight;
+    }
   });
 }
 
+$('supportSendBtn').onclick = async () => {
+  const u = current(); const text = $('supportInput').value.trim();
+  if(!u || !text) return;
+  await addDoc(collection(db, "tickets"), { uid: u.uid, email: u.email, text: text, from: 'player', time: Date.now() });
+  $('supportInput').value = '';
+};
+
+function listenToAllTickets() {
+  if(unsubscribeAdminTickets) unsubscribeAdminTickets();
+  const u = current(); if(!u || !u.isAdmin) return;
+  unsubscribeAdminTickets = onSnapshot(collection(db, "tickets"), (snap) => {
+    const sel = $('adminTicketSelect'); if(!sel) return;
+    let usersMap = new Map();
+    snap.forEach(d => { const m = d.data(); usersMap.set(m.uid, m.email); });
+    const currentVal = sel.value;
+    let options = '<option value="">-- Выберите игрока --</option>';
+    usersMap.forEach((email, uid) => { options += `<option value="${uid}">${email}</option>`; });
+    sel.innerHTML = options; sel.value = currentVal;
+  });
+}
+
+$('adminTicketSelect').onchange = async (e) => {
+  const targetUid = e.target.value; const box = $('adminTicketsList');
+  if(!targetUid) { box.innerHTML = ''; return; }
+  const q = query(collection(db, "tickets"), where("uid", "==", targetUid));
+  const snap = await getDocs(q);
+  let msgs = []; snap.forEach(d => msgs.push(d.data()));
+  msgs.sort((a,b) => (a.time || 0) - (b.time || 0));
+  box.innerHTML = '';
+  msgs.forEach(m => {
+    const isAdmin = m.from === 'admin';
+    box.innerHTML += `<div style="margin-bottom: 8px; text-align: ${isAdmin ? 'right' : 'left'};"><span style="display: inline-block; background: ${isAdmin ? '#2196F3' : '#333'}; padding: 5px 10px; border-radius: 8px; color: #fff;">${isAdmin ? '<b>Вы:</b> ' : '<b>Игрок:</b> '}${m.text}</span></div>`;
+  });
+  box.scrollTop = box.scrollHeight;
+};
+
+$('adminTicketSendBtn').onclick = async () => {
+  const u = current(); const targetUid = $('adminTicketSelect').value; const text = $('adminTicketInput').value.trim();
+  if(!u || !u.isAdmin || !targetUid || !text) return;
+  await addDoc(collection(db, "tickets"), { uid: targetUid, email: 'admin', text: text, from: 'admin', time: Date.now() });
+  $('adminTicketInput').value = '';
+  $('adminTicketSelect').dispatchEvent(new Event('change'));
+};
+
+// АДМИН
+async function fillAllSelects(){
+  const snap = await getDocs(collection(db, "users"));
+  const selChance = $('adminChanceTarget'); if(selChance) selChance.innerHTML = '';
+  snap.forEach(doc => { const d = doc.data(); if(!d.isAdmin && selChance) selChance.innerHTML += `<option value="${doc.id}">${d.email}</option>`; });
+}
 $('adminGiveBtn').onclick = async () => {
   const email=$('adminTarget').value.trim(), amt=parseInt($('adminCoins').value);
   if(!email||!amt) return;
@@ -409,18 +572,5 @@ $('adminGiveBtn').onclick = async () => {
   snap.forEach(async d => { await updateDoc(doc(db,"users",d.id),{coins:increment(amt)}); });
   $('adminGiveLog').textContent='Выдано!';
 };
-
-$('adminChanceBtn').onclick = async () => {
-  const id=$('adminChanceTarget').value, val=parseFloat($('adminChanceValue').value);
-  if(id && val>0) { await updateDoc(doc(db,"users",id),{forcedChance:val}); $('adminChanceLog').textContent='Шанс задан!'; }
-};
-$('adminChanceResetBtn').onclick = async () => {
-  const id=$('adminChanceTarget').value;
-  if(id) { await updateDoc(doc(db,"users",id),{forcedChance:null}); $('adminChanceLog').textContent='Сброшено!'; }
-};
-
-$('adminGodBtn').onclick = async () => { const id=$('adminTrollTarget').value; if(id){ await updateDoc(doc(db,"users",id),{coins:1000000}); $('adminTrollLog').textContent='БОГ!'; } };
-$('adminZeroBtn').onclick = async () => { const id=$('adminTrollTarget').value; if(id){ await updateDoc(doc(db,"users",id),{coins:0}); $('adminTrollLog').textContent='Обнулен'; } };
-$('adminJackpotBtn').onclick = async () => { const id=$('adminTrollTarget').value; if(id){ await updateDoc(doc(db,"users",id),{coins:10000}); $('adminTrollLog').textContent='Джекпот!'; } };
-
-onAuthStateChanged(auth, user => { if(!user) showAuth(); });
+$('adminChanceBtn').onclick = async () => { const id=$('adminChanceTarget').value, val=parseFloat($('adminChanceValue').value); if(id && val>0) { await updateDoc(doc(db,"users",id),{forcedChance:val}); $('adminChanceLog').textContent='Шанс задан!'; } };
+$('adminChanceResetBtn').onclick = async () => { const id=$('adminChanceTarget').value; if(id) { await updateDoc(doc(db,"users",id),{forcedChance:null}); $('adminChanceLog').textContent='Сброшено!'; } };
