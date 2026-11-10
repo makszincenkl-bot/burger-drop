@@ -9,7 +9,7 @@
 <body>
 <div class="bg-layer" id="bgLayer"></div>
 <div class="game">
- <div class="logo"><div class="logo-icon">🔫</div><div class="logo-text"><div class="top">Burger Drop</div><div class="sub">CS2 CASES</div></div></div>
+ <div class="logo"><div class="logo-icon">🪙</div><div class="logo-text"><div class="top">Burger Drop</div><div class="sub">UPGRADER</div></div></div>
  
  <div id="authScreen" class="auth">
    <h2>Вход</h2>
@@ -37,10 +37,6 @@
   
   <div class="tabs">
     <button class="tab active" data-panel="upgrader">🎡 Апгрейдер</button>
-    <button class="tab" data-panel="mines">💣 Мины</button>
-    <button class="tab" data-panel="crash">📈 Краш</button>
-    <button class="tab" data-panel="cases">🎁 Кейсы</button>
-    <button class="tab" data-panel="inventory">🎒 Инвентарь</button>
     <button class="tab" data-panel="deposit">💳 Пополнение</button>
     <button class="tab" data-panel="admin" id="adminTab" style="display:none">🛡 Админ</button>
   </div>
@@ -50,17 +46,13 @@
    <div class="wheel-wrap"><div class="wheel" id="wheel"></div><div class="hub-text" id="hubText">50%</div><div class="needle-spinner" id="needle"><div class="needle-arm"></div></div></div>
    
    <div class="row">
-     <div><label>Ваш предмет</label>
-       <select id="upgradeItemSelect" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ffa5004d; background: #0a190acc; color: #eaf5e6; font-size: 16px; font-weight: 600; outline: none;">
-         <option value="">-- Нет предметов --</option>
-       </select>
-     </div>
+     <div><label>Ставка (монеты)</label><input type="number" id="upgradeBet" value="10" min="1" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ffa5004d; background: #0a190acc; color: #eaf5e6; font-size: 16px; font-weight: 600; outline: none;"></div>
      <div><label>Шанс (%)</label><input type="number" id="chance" value="50" min="0.1" max="99" step="0.1"></div>
    </div>
 
    <div class="preview">
      <div>Множитель: <span class="mult" id="multPreview">x2.00</span></div>
-     <div>Выигрыш: <span class="win-amt" id="winPreview">+0</span> (Предмет)</div>
+     <div>Выигрыш: <span class="win-amt" id="winPreview">+20</span> 🪙</div>
    </div>
 
    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
@@ -68,54 +60,6 @@
      <button id="fastSpinBtn" style="width: 60px; flex: none; padding: 0; font-size: 28px;">⚡</button>
    </div>
    <div class="result" id="result"></div>
-  </div>
-
-  <!-- МИНЫ -->
-  <div class="panel" id="panel-mines">
-    <div class="section-title">💣 Мины (5x5)</div>
-    <div style="margin-bottom: 15px;">
-      <div class="row">
-        <div><label>Ставка</label><input type="number" id="minesBet" value="10" min="1"></div>
-        <div><label>Кол-во мин</label><select id="minesCount" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ffa5004d; background: #0a190acc; color: #eaf5e6; font-size: 16px; font-weight: 600; outline: none;">
-          <option value="3">3 мины</option>
-          <option value="5">5 мин</option>
-          <option value="10">10 мин</option>
-        </select></div>
-      </div>
-      <button id="minesStartBtn" style="background:linear-gradient(135deg, #ff8c00, #b35c00);">НАЧАТЬ ИГРУ</button>
-      <div id="minesGrid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-top: 15px;"></div>
-      <div id="minesStatus" class="result" style="margin-top: 10px;"></div>
-      <button id="minesCashoutBtn" style="display:none; margin-top:10px; background:linear-gradient(135deg,#7ee06b,#4ca832);">ЗАБРАТЬ ВЫИГРЫШ</button>
-    </div>
-  </div>
-
-  <!-- КРАШ -->
-  <div class="panel" id="panel-crash">
-    <div class="section-title">📈 Краш</div>
-    <div style="display: flex; gap: 5px; overflow-x: auto; margin-bottom: 10px; padding-bottom: 5px;" id="crashHistory"></div>
-    <div style="background:#0a190a80; padding:20px; border-radius:12px; border:1px solid #ffa5004d;">
-      <div id="crashMultiplier" style="font-size: 48px; font-weight: 900; color: #7ee06b; text-align: center; margin-bottom: 20px; text-shadow: 0 0 20px #7ee06b80;">x1.00</div>
-      <div class="row">
-        <div><label>Ставка</label><input type="number" id="crashBet" value="10" min="1"></div>
-        <div><label>Авто-стоп (x)</label><input type="number" id="crashAutoStop" value="2.0" min="1.1" step="0.1"></div>
-      </div>
-      <button id="crashStartBtn" style="background:linear-gradient(135deg, #ff8c00, #b35c00);">СТАРТ</button>
-      <button id="crashCashoutBtn" style="display:none; background:linear-gradient(135deg,#7ee06b,#4ca832);">ЗАБРАТЬ (x1.00)</button>
-      <div id="crashStatus" class="result" style="margin-top:10px;"></div>
-    </div>
-  </div>
-
-  <!-- КЕЙСЫ -->
-  <div class="panel" id="panel-cases">
-    <div class="section-title">Выбери кейс</div>
-    <div class="case-grid" id="caseGrid"></div>
-  </div>
-
-  <!-- ИНВЕНТАРЬ -->
-  <div class="panel" id="panel-inventory">
-    <div class="section-title">🎒 Ваш Инвентарь</div>
-    <button id="sellAllBtn" style="background:linear-gradient(135deg,#ffea00,#ff8c00); color:#000; margin-bottom:15px;">💰 ПРОДАТЬ ВСЁ</button>
-    <div id="inventoryList"></div>
   </div>
 
   <!-- ПОПОЛНЕНИЕ -->
@@ -185,14 +129,20 @@
       <div class="admin-row"><button class="small" id="adminChanceBtn">ОК</button><button class="small btn-danger" id="adminChanceResetBtn">СБРОС</button></div>
       <div class="log" id="adminChanceLog"></div>
     </div>
+    
+    <!-- НОВЫЙ БЛОК: УПРАВЛЕНИЕ ИГРОКАМИ -->
+    <div class="case-block">
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px">👥 Управление игроками</div>
+      <div id="adminPlayersList" style="max-height: 200px; overflow-y: auto; font-size: 12px; background: #0000004d; border-radius: 8px; padding: 5px;"></div>
+      <div class="log" id="adminPlayersLog"></div>
+    </div>
   </div>
  </div>
 </div>
 
-<!-- Кнопка Робот -->
+<!-- Модалка Поддержки (оставил, так как ты не просил убирать) -->
 <div id="supportBtn" style="position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; background: linear-gradient(135deg, #2196F3, #0d47a1); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; cursor: pointer; box-shadow: 0 5px 20px rgba(33, 150, 243, 0.4); z-index: 90; transition: transform 0.2s;">🤖</div>
 
-<!-- Модалка Поддержки -->
 <div class="modal-overlay" id="supportModal" style="z-index: 1000;">
   <div class="modal" style="max-width: 440px; display: flex; flex-direction: column; height: 80vh; padding: 15px;">
     <div class="close-modal" onclick="document.getElementById('supportModal').classList.remove('active')">×</div>
@@ -215,18 +165,6 @@
         <button id="adminTicketSendBtn" class="small" style="width: 60px; padding: 0; margin: 0;">➤</button>
       </div>
     </div>
-  </div>
-</div>
-
-<!-- Модалка Кейсов -->
-<div class="modal-overlay" id="caseModal">
-  <div class="modal">
-    <div class="close-modal" onclick="closeModal()">×</div>
-    <div class="modal-head" id="modalTitle">Название</div>
-    <div class="modal-contents" id="modalContents"></div>
-    <div id="modalRouletteWrap"></div>
-    <button id="modalOpenBtn" class="small">ОТКРЫТЬ</button>
-    <div class="log" id="modalLog"></div>
   </div>
 </div>
 
