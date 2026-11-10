@@ -38,7 +38,6 @@ async function saveInventory() {
       inventory: currentUser.inventory, 
       activeItem: currentUser.activeItem
     }); 
-    console.log("Инвентарь сохранен:", currentUser.inventory);
   } catch(e) { console.error("Ошибка сохранения инвентаря:", e); }
 }
 
@@ -125,7 +124,7 @@ document.querySelectorAll('.tab[data-panel]').forEach(t=>t.addEventListener('cli
 const ALL_ITEMS = [
   { name: 'P250 | Sand Dune', emoji: '🔫', val: 10, color: '#4b69ff' }, 
   { name: 'MP9 | Storm', emoji: '🔫', val: 20, color: '#4b69ff' }, 
-  { name: 'Glock-18 | Water Elemental', emoji: '🔫', val: 30, color: '#4b69ff' }, // НОВОЕ
+  { name: 'Glock-18 | Water Elemental', emoji: '🔫', val: 30, color: '#4b69ff' }, 
   { name: 'Nova | Predator', emoji: '🔫', val: 40, color: '#4b69ff' }, 
   { name: 'SG 553 | Waves', emoji: '🔫', val: 60, color: '#4b69ff' },
   { name: 'MAC-10 | Candy Apple', emoji: '🔫', val: 100, color: '#8847ff' }, 
@@ -135,12 +134,12 @@ const ALL_ITEMS = [
   { name: 'USP-S | Cortex', emoji: '🔫', val: 600, color: '#d32ce6' }, 
   { name: 'Desert Eagle | Printstream', emoji: '🔫', val: 1000, color: '#eb4b4b' },
   { name: 'AK-47 | Redline', emoji: '🔫', val: 1500, color: '#eb4b4b' }, 
-  { name: 'M4A4 | Howl', emoji: '🔫', val: 2500, color: '#eb4b4b' }, // НОВОЕ
+  { name: 'M4A4 | Howl', emoji: '🔫', val: 2500, color: '#eb4b4b' }, 
   { name: 'AWP | Asiimov', emoji: '🎯', val: 3000, color: '#eb4b4b' }, 
   { name: 'AK-47 | Fire Serpent', emoji: '🔫', val: 5000, color: '#eb4b4b' },
   { name: 'Bayonet | Doppler', emoji: '🗡️', val: 8000, color: '#ffcc00' }, 
   { name: 'Flip Knife | Fade', emoji: '🔪', val: 10000, color: '#ffcc00' },
-  { name: 'Stiletto Knife | Marble Fade', emoji: '⚔️', val: 15000, color: '#ffcc00' }, // НОВОЕ (3-й нож)
+  { name: 'Stiletto Knife | Marble Fade', emoji: '⚔️', val: 15000, color: '#ffcc00' }, 
   { name: 'Butterfly Knife | Emerald', emoji: '🦋', val: 25000, color: '#ffcc00' }
 ];
 
@@ -759,15 +758,10 @@ async function spinCase(c){
   },50);
 
   setTimeout(async ()=>{
-    // Сохраняем предмет в инвентарь (в памяти)
     const old = u.inventory.find(i => i.name === winner.name);
     if(old) old.count += 1; else u.inventory.push({ name: winner.name, emoji: winner.emoji, val: winner.val, count: 1, color: winner.color });
     
-    // Принудительно обновляем баланс и сохраняем в базу
-    updateBalance(); 
-    renderInventory(); 
-    renderInventorySelect(); 
-    await saveInventory();
+    updateBalance(); renderInventory(); renderInventorySelect(); await saveInventory();
     
     playSound('win'); vibrate(100);
     $('modalLog').textContent=`🎁 Выпало: ${winner.name} (${winner.val} 🪙)`;
