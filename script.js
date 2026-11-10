@@ -195,7 +195,6 @@ async function doUpgrade(isFast) {
   spinning = true;
   $('spinBtn').disabled = true; $('fastSpinBtn').disabled = true;
 
-  // Списываем ставку
   if(item.isCoins) {
       if(u.coins < betAmount) { spinning = false; $('spinBtn').disabled=false; $('fastSpinBtn').disabled=false; return; }
       u.coins -= betAmount; updateBalance(); await addCoins(-betAmount);
@@ -208,18 +207,15 @@ async function doUpgrade(isFast) {
 
   $('result').textContent = '';
   
-  const angle = Math.random() * 360;
   const win = Math.random() * 100 < chance;
   
   spinNeedle(win ? 180 : 0, async () => { 
-    // 180 - это верх (зеленая зона), 0 - низ (черная зона)
     if(win) {
       if(item.isCoins) {
         const winAmt = Math.floor(betAmount * mult);
         u.coins += winAmt; updateBalance(); await addCoins(winAmt);
         $('result').textContent = '🍔 УДАЧА! +' + winAmt + ' 🪙';
       } else {
-        // Выдаем предмет
         const targetVal = item.val * mult;
         let prize = ALL_ITEMS.find(i => i.val >= targetVal) || ALL_ITEMS[ALL_ITEMS.length-1];
         const old = u.inventory.find(i => i.name === prize.name);
@@ -473,7 +469,6 @@ async function spinCase(c){
   },50);
 
   setTimeout(async ()=>{
-    // Начисляем предмет в инвентарь
     const old = u.inventory.find(i => i.name === winner.name);
     if(old) old.count += 1; else u.inventory.push({ name: winner.name, emoji: winner.emoji, val: winner.val, count: 1 });
     
@@ -558,7 +553,7 @@ $('adminTicketSendBtn').onclick = async () => {
   $('adminTicketSelect').dispatchEvent(new Event('change'));
 };
 
-// АДМИН
+// ====== АДМИНКА ======
 async function fillAllSelects(){
   const snap = await getDocs(collection(db, "users"));
   const selChance = $('adminChanceTarget'); if(selChance) selChance.innerHTML = '';
@@ -574,3 +569,8 @@ $('adminGiveBtn').onclick = async () => {
 };
 $('adminChanceBtn').onclick = async () => { const id=$('adminChanceTarget').value, val=parseFloat($('adminChanceValue').value); if(id && val>0) { await updateDoc(doc(db,"users",id),{forcedChance:val}); $('adminChanceLog').textContent='Шанс задан!'; } };
 $('adminChanceResetBtn').onclick = async () => { const id=$('adminChanceTarget').value; if(id) { await updateDoc(doc(db,"users",id),{forcedChance:null}); $('adminChanceLog').textContent='Сброшено!'; } };
+
+// ====== ПОПОЛНЕНИЕ ======
+if($('btnCrypto')) $('btnCrypto').onclick = () => { const box = $('cryptoBox'); box.style.display = box.style.display === 'none' ? 'block' : 'none'; };
+if($('copyTonBtn')) $('copyTonBtn').onclick = () => { const addr = $('tonAddress'); addr.select(); addr.setSelectionRange(0, 99999); navigator.clipboard.writeText(addr.value); $('copyTonBtn').textContent = 'СКОПИРОВАНО'; setTimeout(()=>$('copyTonBtn').textContent='КОПИЯ', 2000); };
+if($('btnSbp')) $('btnSbp').onclick = () => alert('СБП временно недоступно. Напишите в поддержку или телеграм @pruneslo');
