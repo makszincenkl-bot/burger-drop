@@ -9,7 +9,7 @@
 <body>
 <div class="bg-layer" id="bgLayer"></div>
 <div class="game">
- <div class="logo"><div class="logo-icon">🍔</div><div class="logo-text"><div class="top">Burger Drop</div><div class="sub">Spin • Win • Burger</div></div></div>
+ <div class="logo"><div class="logo-icon">🔫</div><div class="logo-text"><div class="top">Burger Drop</div><div class="sub">CS2 CASES</div></div></div>
  
  <div id="authScreen" class="auth">
    <h2>Вход</h2>
@@ -18,9 +18,7 @@
    <div class="err" id="loginErr"></div>
    <button id="loginBtn">ВОЙТИ</button>
    <button class="link-btn" id="showReg">Нет аккаунта? Регистрация</button>
-   <div style="font-size: 11px; color: #b8d8a8; margin-top: 15px; opacity: 0.7; line-height: 1.4;">
-     Burger Drop не является заработком, а просто развлечение
-   </div>
+   <div style="font-size: 11px; color: #b8d8a8; margin-top: 15px; opacity: 0.7; line-height: 1.4;">Burger Drop не является заработком, а просто развлечение</div>
  </div>
 
  <div id="regScreen" class="auth" style="display:none">
@@ -30,9 +28,7 @@
    <div class="err" id="regErr"></div>
    <button id="regBtn">СОЗДАТЬ</button>
    <button class="link-btn" id="showLogin">Назад ко входу</button>
-   <div style="font-size: 11px; color: #b8d8a8; margin-top: 15px; opacity: 0.7; line-height: 1.4;">
-     Burger Drop не является заработком, а просто развлечение
-   </div>
+   <div style="font-size: 11px; color: #b8d8a8; margin-top: 15px; opacity: 0.7; line-height: 1.4;">Burger Drop не является заработком, а просто развлечение</div>
  </div>
 
  <div id="gameScreen" style="display:none">
@@ -56,17 +52,17 @@
    <div class="row">
      <div><label>Ваш предмет</label>
        <select id="upgradeItem" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ffa5004d; background: #0a190acc; color: #eaf5e6; font-size: 16px; font-weight: 600; outline: none;">
-         <option value="coins">🪙 Монеты (Весь баланс)</option>
+         <option value="coins">🪙 Монеты</option>
        </select>
      </div>
-     <div><label>Шанс (%)</label><input type="number" id="chance" value="50" min="0.1" max="99" step="0.1"></div>
+     <div id="betInputWrap"><label>Ставка (монеты)</label><input type="number" id="upgradeBet" value="10" min="1" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ffa5004d; background: #0a190acc; color: #eaf5e6; font-size: 16px; font-weight: 600; outline: none;"></div>
    </div>
 
-   <div class="preview">
-     <div>Множитель: <span class="mult" id="multPreview">x2.00</span></div>
-     <div>Выигрыш: <span class="win-amt" id="winPreview">+0</span> 🪙</div>
+   <div class="row">
+     <div><label>Шанс (%)</label><input type="number" id="chance" value="50" min="0.1" max="99" step="0.1"></div>
+     <div><label>&nbsp;</label><div class="preview" style="padding: 12px; margin: 0; border: none; background: transparent;">Множитель: <span class="mult" id="multPreview">x2.00</span></div></div>
    </div>
-   
+
    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
      <button id="spinBtn" style="flex: 1; margin-bottom: 0;">АПГРЕЙД 🎡</button>
      <button id="fastSpinBtn" style="width: 60px; flex: none; padding: 0; font-size: 28px;">⚡</button>
@@ -81,9 +77,9 @@
       <div class="row">
         <div><label>Ставка</label><input type="number" id="minesBet" value="10" min="1"></div>
         <div><label>Кол-во мин</label><select id="minesCount" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ffa5004d; background: #0a190acc; color: #eaf5e6; font-size: 16px; font-weight: 600; outline: none;">
-          <option value="3">3 мины (x1.2 - x20)</option>
-          <option value="5">5 мин (x1.4 - x40)</option>
-          <option value="10">10 мин (x2 - x200)</option>
+          <option value="3">3 мины</option>
+          <option value="5">5 мин</option>
+          <option value="10">10 мин</option>
         </select></div>
       </div>
       <button id="minesStartBtn" style="background:linear-gradient(135deg, #ff8c00, #b35c00);">НАЧАТЬ ИГРУ</button>
@@ -96,6 +92,7 @@
   <!-- КРАШ -->
   <div class="panel" id="panel-crash">
     <div class="section-title">📈 Краш</div>
+    <div style="display: flex; gap: 5px; overflow-x: auto; margin-bottom: 10px; padding-bottom: 5px;" id="crashHistory"></div>
     <div style="background:#0a190a80; padding:20px; border-radius:12px; border:1px solid #ffa5004d;">
       <div id="crashMultiplier" style="font-size: 48px; font-weight: 900; color: #7ee06b; text-align: center; margin-bottom: 20px; text-shadow: 0 0 20px #7ee06b80;">x1.00</div>
       <div class="row">
@@ -103,6 +100,7 @@
         <div><label>Авто-стоп (x)</label><input type="number" id="crashAutoStop" value="2.0" min="1.1" step="0.1"></div>
       </div>
       <button id="crashStartBtn" style="background:linear-gradient(135deg, #ff8c00, #b35c00);">СТАРТ</button>
+      <button id="crashCashoutBtn" style="display:none; background:linear-gradient(135deg,#7ee06b,#4ca832);">ЗАБРАТЬ (x1.00)</button>
       <div id="crashStatus" class="result" style="margin-top:10px;"></div>
     </div>
   </div>
@@ -174,16 +172,13 @@
 </div>
 
 <!-- Кнопка Робот -->
-<div id="supportBtn" style="position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; background: linear-gradient(135deg, #2196F3, #0d47a1); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; cursor: pointer; box-shadow: 0 5px 20px rgba(33, 150, 243, 0.4); z-index: 90; transition: transform 0.2s;">
-  🤖
-</div>
+<div id="supportBtn" style="position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; background: linear-gradient(135deg, #2196F3, #0d47a1); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; cursor: pointer; box-shadow: 0 5px 20px rgba(33, 150, 243, 0.4); z-index: 90; transition: transform 0.2s;">🤖</div>
 
 <!-- Модалка Поддержки -->
 <div class="modal-overlay" id="supportModal" style="z-index: 1000;">
   <div class="modal" style="max-width: 440px; display: flex; flex-direction: column; height: 80vh; padding: 15px;">
     <div class="close-modal" onclick="document.getElementById('supportModal').classList.remove('active')">×</div>
     <div class="modal-head" style="margin-bottom: 10px;">🤖 Техподдержка</div>
-    
     <div id="playerChatView" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
       <div id="supportMessages" style="flex: 1; overflow-y: auto; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; padding-right: 5px;">
         <div style="color: #b8d8a8; font-size: 12px; text-align: center; margin-top: 20px;">Напишите нам, если у вас проблемы с балансом или игрой.</div>
@@ -193,7 +188,6 @@
         <button id="supportSendBtn" class="small" style="width: 60px; padding: 0; margin: 0;">➤</button>
       </div>
     </div>
-
     <div id="adminChatView" style="flex: 1; display: none; flex-direction: column; overflow: hidden;">
       <div style="font-size: 13px; font-weight: 700; color: #2196F3; margin-bottom: 5px;">Список тикетов:</div>
       <select id="adminTicketSelect" style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #ffa5004d; background: #0a190acc; color: #eaf5e6; margin-bottom: 10px; outline: none;"></select>
