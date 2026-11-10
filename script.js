@@ -20,8 +20,6 @@ let currentUser = null;
 let unsubscribeSnap = null;
 let unsubscribeTickets = null;
 let unsubscribeAdminTickets = null;
-
-// Флаг режима апгрейдера (true = монеты, false = предметы)
 let isCoinMode = true;
 
 function current(){ return currentUser; }
@@ -118,7 +116,7 @@ function enterGame(){
   updateBalance(); renderCases(); renderInventorySelect(); renderInventory(); if(u.isAdmin)fillAllSelects();
 }
 
-document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');$('panel-'+t.dataset.panel).classList.add('active');}));
+document.querySelectorAll('.tab[data-panel]').forEach(t=>t.addEventListener('click',()=>{document.querySelectorAll('.tab[data-panel]').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');$('panel-'+t.dataset.panel).classList.add('active');}));
 
 // ====== СПИСОК ПРЕДМЕТОВ (CS2) ======
 const ALL_ITEMS = [
