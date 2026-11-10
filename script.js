@@ -21,11 +21,13 @@ let unsubscribeSnap = null;
 
 function current(){ return currentUser; }
 
-// Сохранение в базу с выводом ошибки на экран (если что-то пойдет не так)
-function saveDB(){ 
+// ==== НАДЕЖНОЕ СОХРАНЕНИЕ ====
+async function saveDB(){ 
   if(!currentUser) return;
-  updateDoc(doc(db, "users", currentUser.uid), { coins: currentUser.coins })
-  .catch(e => {
+  try {
+    await updateDoc(doc(db, "users", currentUser.uid), { coins: currentUser.coins });
+  } catch(e) {
+    console.error("Ошибка сохранения:", e);
     let errBox = $('dbErrorBox');
     if(!errBox) {
       errBox = document.createElement('div');
@@ -34,9 +36,10 @@ function saveDB(){
       document.querySelector('.game').prepend(errBox);
     }
     errBox.textContent = 'ОШИБКА БАЗЫ: ' + e.message;
-  });
+  }
 }
 
+// Звуки
 function playSound(type) {
   try {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -51,6 +54,7 @@ function playSound(type) {
 }
 function vibrate(ms) { if (navigator.vibrate) navigator.vibrate(ms); }
 
+// Фон
 function initBg(){
   const layer = document.getElementById('bgLayer');
   const g1 = document.createElement('div'); g1.className = 'bg-glow g1'; layer.appendChild(g1);
@@ -116,7 +120,7 @@ function spinNeedle(targetAngle,onDone,fast){
   setTimeout(onDone, fast ? 1000 : 4000); 
 }
 
-function doSpin(isFast){
+async function doSpin(isFast){
   const u=current(); if(!u||spinning)return;
   const bet=Math.floor(Number(betEl.value)),chance=getEffectiveChance();
   if(bet<1){resultEl.className='result lose';resultEl.textContent='Ставка > 0';return}
@@ -124,18 +128,22 @@ function doSpin(isFast){
   
   spinning=true; const normalBtn = $('spinBtn'), fastBtn = $('fastSpinBtn');
   normalBtn.disabled=true; if(fastBtn) fastBtn.disabled=true;
-  u.coins-=bet; updateBalance(); saveDB(); resultEl.textContent='';
+  
+  u.coins -= bet; 
+  await saveDB(); // Сначала сохраняем списание
+  updateBalance(); resultEl.textContent='';
   
   playSound('spin');
   const angle=Math.random()*360, gs=180-chance*1.8, ge=180+chance*1.8;
   const win = (angle>=gs && angle<=ge);
   
-  spinNeedle(angle,()=>{
+  spinNeedle(angle, async ()=>{
     if(win){
       const winAmt=Math.floor(bet*100/chance);
       u.coins += winAmt; 
+      await saveDB(); // Сохраняем выигрыш
       updateBalance(); 
-      saveDB(); // Отправляем в базу ПОСЛЕ прибавления монет
+      
       playSound('win'); vibrate([100, 50, 100]);
       resultEl.className='result win'; resultEl.textContent='🍔 УДАЧА! +'+winAmt+' 🪙';
       hubText.className='hub-text win'; hubText.textContent='УДАЧА';
@@ -163,19 +171,25 @@ function renderCases(){const grid=$('caseGrid');grid.innerHTML='';CASES.forEach(
 function openCaseModal(id){const c=CASES.find(x=>x.id===id);if(!c)return;$('caseModal').classList.add('active');$('modalLog').textContent='';$('modalTitle').textContent=`${c.emoji} ${c.name} (${c.price}🪙)`;const tw=totalW(c.items);$('modalContents').innerHTML=c.items.map(i=>`<div class="modal-item">${i.emoji} ${i.name} <b>${(i.w/tw*100).toFixed(1)}%</b> → ${i.val}🪙</div>`).join('');$('modalContents').style.display='flex';const b=$('modalOpenBtn');b.textContent=`ОТКРЫТЬ ЗА ${c.price} 🪙`;b.disabled=false;b.onclick=()=>spinCase(c);$('modalRouletteWrap').innerHTML=''}
 window.closeModal=()=>{$('caseModal').classList.remove('active')};
 
-function spinCase(c){
+async function spinCase(c){
   const u=current(); 
   if(u.coins<c.price){$('modalLog').textContent='Мало монет!';return}
-  u.coins-=c.price; updateBalance(); saveDB();
+  
+  u.coins -= c.price; 
+  await saveDB(); // Сохраняем списание
+  updateBalance();
+  
   const b=$('modalOpenBtn');b.disabled=true;b.textContent='КРУТИМ...';$('modalContents').style.display='none';$('modalLog').textContent='';
   const winner=pickPrize(c.items),cells=Array.from({length:40},()=>pickPrize(c.items));cells[32]=winner;
   $('modalRouletteWrap').innerHTML='<div class="roulette-view"><div class="roulette-strip" id="strip"></div><div class="roulette-marker"></div></div>';
   const strip=$('strip');strip.innerHTML=cells.map(i=>`<div class="roulette-cell">${i.emoji}</div>`).join('');playSound('spin');
   setTimeout(()=>{const view=document.querySelector('.roulette-view'),offset=-(32*66)+(view.offsetWidth/2)-30;strip.style.transition='transform 3s cubic-bezier(.1,.8,.2,1)';strip.style.transform=`translateX(${offset}px)`},50);
-  setTimeout(()=>{
+  
+  setTimeout(async ()=>{
     u.coins += winner.val; 
+    await saveDB(); // Сохраняем выигрыш
     updateBalance(); 
-    saveDB(); // Отправляем в базу ПОСЛЕ прибавления монет
+    
     playSound('win');vibrate(100);
     $('modalLog').textContent=`🎁 Выпало: ${winner.emoji} ${winner.name} (+${winner.val} 🪙)`;
     b.textContent='ЗАКРЫТЬ';b.disabled=false;b.onclick=closeModal;
@@ -184,8 +198,8 @@ function spinCase(c){
 
 let clicks=0,perClick=1,autoLevel=0,timer=null;
 function updateClickerUI(){$('perClick').textContent=perClick;$('clickCount').textContent=clicks}
-$('burgerClick').onclick=()=>{const u=current();if(!u)return;clicks++;u.coins+=perClick;updateBalance();saveDB();updateClickerUI();vibrate(20)};
-$('buyAuto').onclick=()=>{if(autoLevel>=5)return;const cost=50*(autoLevel+1),u=current();if(u.coins<cost){$('clickerLog').textContent='Мало монет';return}u.coins-=cost;autoLevel++;perClick++;updateBalance();saveDB();updateClickerUI();if(!timer)timer=setInterval(()=>{const cu=current();if(cu){cu.coins+=perClick;updateBalance();saveDB();updateClickerUI()}},1000)};
+$('burgerClick').onclick=async ()=>{const u=current();if(!u)return;clicks++;u.coins+=perClick;await saveDB();updateBalance();updateClickerUI();vibrate(20)};
+$('buyAuto').onclick=async ()=>{if(autoLevel>=5)return;const cost=50*(autoLevel+1),u=current();if(u.coins<cost){$('clickerLog').textContent='Мало монет';return}u.coins-=cost;autoLevel++;perClick++;await saveDB();updateBalance();updateClickerUI();if(!timer)timer=setInterval(async ()=>{const cu=current();if(cu){cu.coins+=perClick;await saveDB();updateBalance();updateClickerUI()}},1000)};
 
 async function fillAllSelects(){
   const snap = await getDocs(collection(db, "users"));
@@ -202,5 +216,3 @@ $('adminGiveBtn').onclick = async () => {
 };
 $('adminGodBtn').onclick = async () => { const id=$('adminTrollTarget').value; if(id){ await updateDoc(doc(db,"users",id),{coins:1000000}); $('adminTrollLog').textContent='БОГ!'; } };
 $('adminZeroBtn').onclick = async () => { const id=$('adminTrollTarget').value; if(id){ await updateDoc(doc(db,"users",id),{coins:0}); $('adminTrollLog').textContent='Обнулен'; } };
-
-onAuthStateChanged(auth, user => { if(!user) showAuth(); });
