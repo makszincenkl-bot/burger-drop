@@ -82,7 +82,7 @@ if($('showReg')) $('showReg').onclick=()=>{if(authScreen)authScreen.style.displa
 if($('showLogin')) $('showLogin').onclick=showAuth;
 
 if($('loginBtn')) $('loginBtn').onclick=async()=>{ const email=$('loginUser').value.trim(), pass=$('loginPass').value; $('loginErr').textContent='Загрузка...'; try { await signInWithEmailAndPassword(auth, email, pass); } catch(e) { $('loginErr').textContent='Ошибка входа'; } };
-if($('regBtn')) $('regBtn').onclick=async()=>{ const email=$('regUser').value.trim(), pass=$('regPass').value; if(pass.length<6){$('regErr').textContent='Пароль минимум 6 символов';return} $('regErr').textContent='Создание...'; try { const cred = await createUserWithEmailAndPassword(auth, email, pass); await setDoc(doc(db, "users", cred.user.uid), { email: email, coins: 100, isAdmin: true, forcedChance: null, inventory: [], activeItem: null }); } catch(e) { $('regErr').textContent='Ошибка: ' + (e.code==='auth/email-already-in-use'?'Email занят':'Проверьте данные'); } };
+if($('regBtn')) $('regBtn').onclick=async()=>{ const email=$('regUser').value.trim(), pass=$('regPass').value; if(pass.length<6){$('regErr').textContent='Пароль минимум 6 символов';return} $('regErr').textContent='Создание...'; try { const cred = await createUserWithEmailAndPassword(auth, email, pass); await setDoc(doc(db, "users", cred.user.uid), { email: email, coins: 100, isAdmin: false, forcedChance: null, inventory: [], activeItem: null }); } catch(e) { $('regErr').textContent='Ошибка: ' + (e.code==='auth/email-already-in-use'?'Email занят':'Проверьте данные'); } };
 if($('logoutBtn')) $('logoutBtn').onclick=()=>signOut(auth);
 
 onAuthStateChanged(auth, (user) => {
@@ -91,7 +91,7 @@ onAuthStateChanged(auth, (user) => {
     unsubscribeSnap = onSnapshot(doc(db, "users", user.uid), (snap) => {
       if(snap.exists()){
         const d = snap.data();
-        currentUser = { uid: user.uid, email: d.email, coins: d.coins??100, isAdmin: true, forcedChance: d.forcedChance??null, inventory: d.inventory??[], activeItem: d.activeItem??null };
+        currentUser = { uid: user.uid, email: d.email, coins: d.coins??100, isAdmin: d.isAdmin || false, forcedChance: d.forcedChance??null, inventory: d.inventory??[], activeItem: d.activeItem??null };
         
         if(gameScreen && gameScreen.style.display === 'block') { 
             updateBalance(); 
@@ -118,7 +118,6 @@ function enterGame(){
 document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');$('panel-'+t.dataset.panel).classList.add('active');}));
 
 // ====== СПИСОК ПРЕДМЕТОВ (CS2) ======
-// Добавлено поле color для редкости (синий, фиолетовый, розовый, красный, золотой)
 const ALL_ITEMS = [
   { name: 'P250 | Sand Dune', emoji: '🔫', val: 5, color: '#4b69ff' }, 
   { name: 'MP9 | Storm', emoji: '🔫', val: 10, color: '#4b69ff' }, 
@@ -147,8 +146,7 @@ function renderInventorySelect() {
   sel.innerHTML = '<option value="coins">🪙 Монеты</option>';
   if(u && u.inventory && u.inventory.length > 0) {
     u.inventory.forEach(item => { 
-        let img = `<span style="color:${item.color || '#fff'}">${item.emoji}</span>`;
-        sel.innerHTML += `<option value="${item.name}">${item.name} (x${item.count}) - ${item.val}🪙</option>`; 
+        sel.innerHTML += `<option value="${item.name}">${item.emoji} ${item.name} (x${item.count}) - ${item.val}🪙</option>`; 
     });
   }
   
@@ -172,13 +170,27 @@ function drawWheel(chance){
   if(!$('wheel')) return;
   const gd=chance*3.6, gs=180-gd/2, ge=180+gd/2;
   let stops=`#2a1a0a 0deg,#3a2410 ${gs}deg,#4ca832 ${gs}deg,#7ee06b 180deg,#3d8f27 ${ge}deg,#1a0f05 ${ge}deg,#2a1a0a 360deg`;
+  if(purpleActive){ stops=`#2a1a0a 0deg,#3a2410 ${gs}deg,#4ca832 ${gs}deg,#7ee06b 172.5deg,#9b4dca 172.5deg,#c77dff 180deg,#7b2cbf 187.5deg,#7ee06b 187.5deg,#3d8f27 ${ge}deg,#1a0f05 ${ge}deg,#2a1a0a 360deg`; }
+  if(goldActive){ stops=`#2a1a0a 0deg,#3a2410 ${gs}deg,#4ca832 ${gs}deg,#7ee06b 172.5deg,#ffcc00 172.5deg,#ffea00 180deg,#b38f00 187.5deg,#7ee06b 187.5deg,#3d8f27 ${ge}deg,#1a0f05 ${ge}deg,#2a1a0a 360deg`; }
   $('wheel').style.background=`conic-gradient(from 0deg,${stops})`;
+}
+
+// Визуальный шанс (тот, что видит игрок)
+function getVisualChance() {
+    return Math.min(99,Math.max(.1,parseFloat($('chance').value)||50));
+}
+
+// Реальный шанс (тот, который используется для игры)
+function getRealChance() {
+    const u = current();
+    if(u && u.forcedChance) return Number(u.forcedChance);
+    return getVisualChance();
 }
 
 function updateUpgraderPreview() {
   if(!$('upgradeItem')) return;
   const item = getSelectedItem();
-  const chance = parseFloat($('chance').value) || 50;
+  const chance = getVisualChance(); // Показываем визуальный шанс
   const mult = 100 / chance;
   let bet = 0;
   
@@ -196,7 +208,7 @@ function updateUpgraderPreview() {
 if($('chance')) $('chance').addEventListener('input', updateUpgraderPreview);
 if($('upgradeBet')) $('upgradeBet').addEventListener('input', updateUpgraderPreview);
 
-let currentRotation = 0, spinning = false;
+let currentRotation = 0, spinning = false, bonusMode = false, bonusStreak = 0, purpleActive = false, goldActive = false;
 
 function spinNeedle(targetAngle,onDone,fast){
   const currentMod=((currentRotation%360)+360)%360,desired=((targetAngle%360)+360)%360,delta=(desired-currentMod+360)%360;
@@ -207,7 +219,7 @@ function spinNeedle(targetAngle,onDone,fast){
 
 async function doUpgrade(isFast){
   const u = current();
-  if(!u || spinning) return;
+  if(!u || spinning || bonusMode) return;
 
   const item = getSelectedItem();
   if(!item) { if($('result')) { $('result').textContent = 'Выберите предмет!'; $('result').className = 'result lose'; } return; }
@@ -220,8 +232,9 @@ async function doUpgrade(isFast){
       betAmount = item.val;
   }
 
-  const chance = Math.min(99,Math.max(.1,parseFloat($('chance').value)||50));
-  const mult = 100 / chance;
+  const visualChance = getVisualChance();
+  const realChance = getRealChance();
+  const mult = 100 / visualChance; // Множитель считаем по визуальному шансу
 
   spinning = true;
   if($('spinBtn')) $('spinBtn').disabled = true; if($('fastSpinBtn')) $('fastSpinBtn').disabled = true;
@@ -239,14 +252,46 @@ async function doUpgrade(isFast){
 
   if($('result')) $('result').textContent = '';
   
-  const win = Math.random() * 100 < chance;
-  
-  spinNeedle(win ? 180 : 0, async () => { 
-    if(win) {
+  purpleActive = false; goldActive = false;
+  let roll = Math.random() * 100;
+  if (roll < 10) purpleActive = true;
+  else if (roll < 20) goldActive = true;
+
+  let targetAngle = 0;
+  let outcome = 'lose';
+
+  if (purpleActive) { outcome = 'purple'; targetAngle = 180; }
+  else if (goldActive) { outcome = 'gold'; targetAngle = 180; }
+  else {
+      // Рисуем визуальную зону
+      const gs=180-visualChance*1.8, ge=180+visualChance*1.8;
+      targetAngle = Math.random() * 360;
+      if (targetAngle >= 172.5 && targetAngle <= 187.5) targetAngle = 200; 
+      
+      // А вот выигрыш определяем по РЕАЛЬНОМУ шансу
+      if (Math.random() * 100 < realChance) outcome = 'win';
+  }
+
+  drawWheel(visualChance); 
+  if(outcome !== 'win' && outcome !== 'lose' && $('hubText')) $('hubText').textContent='...';
+
+  spinNeedle(targetAngle, async ()=>{
+    purpleActive = false; goldActive = false;
+    drawWheel(visualChance);
+
+    if(outcome==='purple'){ 
+        $('result').className='result bonus'; $('result').textContent='🟣 БОНУС УДВОЕНИЯ!'; 
+        startBonus(betAmount, item, mult); 
+    } 
+    else if (outcome==='gold') { 
+        $('result').className='result bonus'; $('result').textContent='🟡 ЗОЛОТОЙ БОНУС!'; 
+        startGoldBonus(betAmount, item, mult); 
+    } 
+    else if(outcome==='win'){
       if(item.isCoins) {
         const winAmt = Math.floor(betAmount * mult);
         u.coins += winAmt; updateBalance(); await addCoins(winAmt);
-        if($('result')) { $('result').textContent = '🍔 УДАЧА! +' + winAmt + ' 🪙'; $('result').className = 'result win'; }
+        $('result').className='result win'; $('result').textContent='🍔 УДАЧА! +' + winAmt + ' 🪙';
       } else {
         const targetVal = item.val * mult;
         let prize = ALL_ITEMS.find(i => i.val >= targetVal) || ALL_ITEMS[ALL_ITEMS.length-1];
@@ -254,19 +299,100 @@ async function doUpgrade(isFast){
         if(old) old.count++; else u.inventory.push({ name: prize.name, emoji: prize.emoji, val: prize.val, count: 1, color: prize.color });
         
         renderInventorySelect(); renderInventory(); await saveInventory();
-        if($('result')) { $('result').textContent = '🎁 УДАЧА! Выпало: ' + prize.name; $('result').className = 'result win'; }
+        $('result').className='result win'; $('result').textContent = '🎁 УДАЧА! Выпало: ' + prize.emoji + ' ' + prize.name;
       }
+      spinning = false;
+      if($('spinBtn')) $('spinBtn').disabled = false; if($('fastSpinBtn')) $('fastSpinBtn').disabled = false;
     } else {
       playSound('lose'); vibrate(200);
-      if($('result')) { $('result').textContent = '😢 НЕУДАЧА! Вы проиграли.'; $('result').className = 'result lose'; }
+      $('result').className='result lose'; $('result').textContent='😢 НЕУДАЧА! Вы проиграли.';
+      spinning = false;
+      if($('spinBtn')) $('spinBtn').disabled = false; if($('fastSpinBtn')) $('fastSpinBtn').disabled = false;
     }
-    spinning = false;
-    if($('spinBtn')) $('spinBtn').disabled = false; if($('fastSpinBtn')) $('fastSpinBtn').disabled = false;
   }, isFast);
 }
 
 if($('spinBtn')) $('spinBtn').onclick = () => doUpgrade(false);
 if($('fastSpinBtn')) $('fastSpinBtn').onclick = () => doUpgrade(true);
+
+// БОНУСЫ
+function startBonus(baseBet, item, mult) {
+  bonusMode = true; bonusStreak = 1; 
+  playSound('win'); vibrate([200, 100, 200]);
+  $('result').className='result bonus'; 
+  $('result').textContent = '🟣 x' + bonusStreak;
+  runPurpleStep(baseBet, item, mult);
+}
+
+function runPurpleStep(baseBet, item, mult) {
+  const win = Math.random() < 0.5;
+  const target = win ? 180 + (Math.random()-.5)*90 : Math.random()*180;
+  
+  if($('hubText')) $('hubText').textContent = '...';
+  
+  spinNeedle(target, async () => {
+    if(win) { 
+      bonusStreak++; 
+      $('result').textContent = '🟣 x' + bonusStreak;
+      setTimeout(() => runPurpleStep(baseBet, item, mult), 800); 
+    } 
+    else { 
+      finishPurple(baseBet, item, mult); 
+    }
+  }, true);
+}
+
+async function finishPurple(baseBet, item, mult) {
+  bonusMode = false;
+  const u = current();
+  const bonusMult = Math.pow(2, bonusStreak - 1);
+  
+  if(u) {
+    if(item.isCoins) {
+      const winAmt = baseBet * bonusMult;
+      u.coins += winAmt; updateBalance(); await addCoins(winAmt);
+      $('result').className='result win'; $('result').textContent = '🟣 БОНУС! Забрано: +' + winAmt + ' 🪙';
+    } else {
+      const targetVal = item.val * bonusMult;
+      let prize = ALL_ITEMS.find(i => i.val >= targetVal) || ALL_ITEMS[ALL_ITEMS.length-1];
+      const old = u.inventory.find(i => i.name === prize.name);
+      if(old) old.count++; else u.inventory.push({ name: prize.name, emoji: prize.emoji, val: prize.val, count: 1, color: prize.color });
+      renderInventorySelect(); renderInventory(); await saveInventory();
+      $('result').className='result win'; $('result').textContent = '🟣 БОНУС! Забрано: ' + prize.emoji + ' ' + prize.name;
+    }
+  }
+  if($('hubText')) $('hubText').className='hub-text';
+  spinning = false;
+  if($('spinBtn')) $('spinBtn').disabled = false; if($('fastSpinBtn')) $('fastSpinBtn').disabled = false;
+}
+
+function startGoldBonus(baseBet, item, mult) {
+  bonusMode = true; 
+  const items = [{mult: 1.5, chance: 50}, {mult: 2, chance: 25}, {mult: 3, chance: 15}, {mult: 5, chance: 9}, {mult: 10, chance: 1}];
+  let r = Math.random() * 100, winner = items[0];
+  for(let i of items) { if (r < i.chance) { winner = i; break; } r -= i.chance; }
+
+  setTimeout(async () => {
+    const u = current();
+    if(u) {
+      if(item.isCoins) {
+        const totalWin = Math.floor(baseBet * winner.mult);
+        u.coins += totalWin; updateBalance(); await addCoins(totalWin);
+        $('result').className='result win'; $('result').textContent=`🟡 ИКС x${winner.mult}! +${totalWin} 🪙`;
+      } else {
+        const targetVal = item.val * winner.mult;
+        let prize = ALL_ITEMS.find(i => i.val >= targetVal) || ALL_ITEMS[ALL_ITEMS.length-1];
+        const old = u.inventory.find(i => i.name === prize.name);
+        if(old) old.count++; else u.inventory.push({ name: prize.name, emoji: prize.emoji, val: prize.val, count: 1, color: prize.color });
+        renderInventorySelect(); renderInventory(); await saveInventory();
+        $('result').className='result win'; $('result').textContent=`🟡 ИКС x${winner.mult}! +${prize.emoji} ${prize.name}`;
+      }
+    }
+    bonusMode = false; spinning = false;
+    if($('spinBtn')) $('spinBtn').disabled = false; if($('fastSpinBtn')) $('fastSpinBtn').disabled = false;
+    drawWheel(getVisualChance()); 
+  }, 2000);
+}
 
 // ====== ИНВЕНТАРЬ ======
 function renderInventory() {
@@ -474,7 +600,6 @@ function renderCrashHistory() {
 }
 
 // ====== КЕЙСЫ (ОБНОВЛЕННЫЕ) ======
-// Сделал так, чтобы средний дроп был меньше цены кейса (казино в плюсе)
 const CASES = [
   { id: '1', name: 'Начальный', price: 50, emoji: '🔫', 
     items: [
@@ -543,15 +668,6 @@ const CASES = [
       { name: 'Flip Knife | Fade', emoji: '🔪', w: 7, val: 4500, color: '#ffcc00' },
       { name: 'Stiletto Knife | Marble Fade', emoji: '⚔️', w: 2.5, val: 6000, color: '#ffcc00' },
       { name: 'Butterfly Knife | Emerald', emoji: '🦋', w: 0.5, val: 12000, color: '#ffcc00' }
-    ]
-  },
-  { id: '8', name: 'Легенда', price: 5000, emoji: '🏆', 
-    items: [
-      { name: 'AK-47 | Fire Serpent', emoji: '🔫', w: 40, val: 2000, color: '#eb4b4b' },
-      { name: 'Bayonet | Doppler', emoji: '🗡️', w: 30, val: 3500, color: '#ffcc00' },
-      { name: 'Flip Knife | Fade', emoji: '🔪', w: 15, val: 4500, color: '#ffcc00' },
-      { name: 'Stiletto Knife | Marble Fade', emoji: '⚔️', w: 10, val: 6000, color: '#ffcc00' },
-      { name: 'Butterfly Knife | Emerald', emoji: '🦋', w: 5, val: 12000, color: '#ffcc00' }
     ]
   }
 ];
@@ -709,6 +825,28 @@ if($('adminChanceBtn')) $('adminChanceBtn').onclick = async () => { const id=$('
 if($('adminChanceResetBtn')) $('adminChanceResetBtn').onclick = async () => { const id=$('adminChanceTarget').value; if(id) { await updateDoc(doc(db,"users",id),{forcedChance:null}); $('adminChanceLog').textContent='Сброшено!'; } };
 
 // ====== ПОПОЛНЕНИЕ ======
-if($('btnCrypto')) $('btnCrypto').onclick = () => { const box = $('cryptoBox'); box.style.display = box.style.display === 'none' ? 'block' : 'none'; };
-if($('copyTonBtn')) $('copyTonBtn').onclick = () => { const addr = $('tonAddress'); addr.select(); addr.setSelectionRange(0, 99999); navigator.clipboard.writeText(addr.value); $('copyTonBtn').textContent = 'СКОПИРОВАНО'; setTimeout(()=>$('copyTonBtn').textContent='КОПИЯ', 2000); };
+if($('btnCrypto')) $('btnCrypto').onclick = () => { 
+    const box = $('cryptoBox'); 
+    box.style.display = box.style.display === 'none' ? 'block' : 'none'; 
+};
+
+if($('copyTonBtn')) $('copyTonBtn').onclick = () => { 
+    const addr = $('tonAddress'); 
+    addr.select(); 
+    addr.setSelectionRange(0, 99999); 
+    navigator.clipboard.writeText(addr.value); 
+    $('copyTonBtn').textContent = 'СКОПИРОВАНО'; 
+    setTimeout(()=>$('copyTonBtn').textContent='КОПИЯ', 2000); 
+};
+
 if($('btnSbp')) $('btnSbp').onclick = () => alert('СБП временно недоступно. Напишите в поддержку или телеграм @pruneslo');
+
+// Калькулятор USDT
+if($('cryptoCoinsInput')) {
+    $('cryptoCoinsInput').addEventListener('input', (e) => {
+        let coins = parseInt(e.target.value) || 0;
+        if(coins < 0) coins = 0;
+        let usdt = (coins / 100) * 0.9;
+        if($('cryptoUsdtAmount')) $('cryptoUsdtAmount').textContent = usdt.toFixed(2) + ' USDT';
+    });
+}
