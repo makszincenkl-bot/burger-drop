@@ -5,10 +5,16 @@
 .bg-glow.g2{width:260px;height:260px;background:#4ca832;bottom:-70px;right:-50px;animation-delay:-4s}
 .bg-glow.g3{width:200px;height:200px;background:#9b4dca;top:40%;right:10%;animation-delay:-8s;opacity:.35}
 @keyframes floatGlow{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(30px,-20px) scale(1.15)}}
+
+/* ОРУЖИЕ НА ФОНЕ */
+.bg-weapon{position:absolute;font-size:50px;opacity:.08;animation:driftWeapon linear infinite;filter:drop-shadow(0 0 10px #ff8c0066)}
+@keyframes driftWeapon{0%{transform:translateY(110vh) rotate(-20deg)}100%{transform:translateY(-20vh) rotate(20deg)}}
+
 .bg-emoji{position:absolute;font-size:38px;opacity:.13;animation:drift linear infinite;filter:drop-shadow(0 0 6px #ff8c0066)}
 @keyframes drift{0%{transform:translateY(110vh) rotate(0deg)}100%{transform:translateY(-20vh) rotate(360deg)}}
 .bg-star{position:absolute;width:3px;height:3px;background:#ffcc66;border-radius:50%;opacity:.6;animation:twinkle 3s ease-in-out infinite}
 @keyframes twinkle{0%,100%{opacity:.1;transform:scale(.6)}50%{opacity:.9;transform:scale(1.4)}}
+
 .game{position:relative;z-index:2;background:linear-gradient(160deg,rgba(46,90,35,.72),rgba(20,40,15,.88));border:1px solid rgba(255,165,0,.4);padding:20px;border-radius:20px;width:100%;max-width:440px;text-align:center;box-shadow:0 10px 40px #000d,0 0 0 1px #ff8c0022 inset;backdrop-filter:blur(4px)}
 .logo{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:15px}
 .logo-icon{width:50px;height:50px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe066,#ff8c00 55%,#b35c00);display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 0 15px #ff8c0099;animation:pulseLogo 2.5s ease-in-out infinite}
@@ -98,3 +104,8 @@ button.small{padding:10px;font-size:13px;border-radius:8px}
 .admin-row{display:flex;gap:8px;margin-bottom:8px}
 .admin-row>*{flex:1}
 .muted{font-size:11px;color:#b8d8a8;margin-top:6px}
+
+/* СТИЛИ ДЛЯ НОВЫХ КНОПОК АДМИНА */
+.btn-danger{background:linear-gradient(135deg,#ff4a4a,#b30000);color:#fff}
+.btn-gold{background:linear-gradient(135deg,#ffea00,#ff8c00);color:#000;box-shadow:0 0 10px #ffcc00}
+.btn-purple{background:linear-gradient(135deg,#c77dff,#7b2cbf);color:#fff}
