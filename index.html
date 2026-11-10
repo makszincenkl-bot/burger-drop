@@ -124,13 +124,11 @@
   <div class="panel" id="panel-deposit">
     <div class="section-title">Выберите способ оплаты</div>
     <div style="display: flex; flex-direction: column; gap: 15px;">
-      <!-- Кнопка СБП -->
       <div id="btnSbp" style="background: linear-gradient(135deg, #2196F3, #0d47a1); border-radius: 15px; padding: 20px; cursor: pointer; text-align: left; position: relative; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
         <div style="font-size: 24px; font-weight: 900; color: #fff; margin-bottom: 5px;">СБП</div>
         <div style="font-size: 12px; color: #bbdefb;">Система быстрых платежей</div>
         <div style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); font-size: 40px; opacity: 0.5;">🏦</div>
       </div>
-      <!-- Кнопка Крипта -->
       <div id="btnCrypto" style="background: linear-gradient(135deg, #00bcd4, #006064); border-radius: 15px; padding: 20px; cursor: pointer; text-align: left; position: relative; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
         <div style="font-size: 24px; font-weight: 900; color: #fff; margin-bottom: 5px;">USDT (TON)</div>
         <div style="font-size: 12px; color: #b2ebf2;">Криптовалюта</div>
@@ -138,12 +136,10 @@
       </div>
     </div>
 
-    <!-- НАДПИСЬ ПОД КНОПКАМИ -->
     <div style="text-align: center; font-size: 14px; color: #ffcc66; margin-top: 15px; font-weight: 600;">
       Насчет пополнения вы можете договориться в телеграмме <a href="https://t.me/pruneslo" target="_blank" style="color: #ff8c00; text-decoration: underline;">@pruneslo</a>
     </div>
 
-    <!-- Окошко Крипты -->
     <div id="cryptoBox" style="display: none; margin-top: 20px; background: #0a190acc; border: 1px solid #00bcd4; border-radius: 12px; padding: 15px; text-align: left;">
       <div style="font-size: 13px; color: #eaf5e6; margin-bottom: 10px;">Отправьте USDT (TON) на адрес:</div>
       <div style="display: flex; gap: 5px; margin-bottom: 15px;">
@@ -153,9 +149,6 @@
       <div style="background: #ff8c001a; border-left: 3px solid #ff8c00; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
         <div style="font-size: 12px; color: #ffcc66; margin-bottom: 5px;">⚠️ ВАЖНО:</div>
         <div style="font-size: 12px; color: #b8d8a8; line-height: 1.4;">Отправляйте только <b>USDT в сети TON</b>. После перевода монеты зачислятся на ваш баланс в течение 5-10 минут.</div>
-      </div>
-      <div style="text-align: center; font-size: 13px; color: #b8d8a8;">
-        Если монеты не пришли, напишите в поддержку (кнопка робота справа внизу).
       </div>
     </div>
   </div>
@@ -180,18 +173,17 @@
  </div>
 </div>
 
-<!-- Кнопка Робот (Поддержка) -->
+<!-- Кнопка Робот -->
 <div id="supportBtn" style="position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; background: linear-gradient(135deg, #2196F3, #0d47a1); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; cursor: pointer; box-shadow: 0 5px 20px rgba(33, 150, 243, 0.4); z-index: 90; transition: transform 0.2s;">
   🤖
 </div>
 
-<!-- Модальное окно Поддержки -->
+<!-- Модалка Поддержки -->
 <div class="modal-overlay" id="supportModal" style="z-index: 1000;">
   <div class="modal" style="max-width: 440px; display: flex; flex-direction: column; height: 80vh; padding: 15px;">
     <div class="close-modal" onclick="document.getElementById('supportModal').classList.remove('active')">×</div>
     <div class="modal-head" style="margin-bottom: 10px;">🤖 Техподдержка</div>
     
-    <!-- Чат (Для игрока) -->
     <div id="playerChatView" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
       <div id="supportMessages" style="flex: 1; overflow-y: auto; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; padding-right: 5px;">
         <div style="color: #b8d8a8; font-size: 12px; text-align: center; margin-top: 20px;">Напишите нам, если у вас проблемы с балансом или игрой.</div>
@@ -202,13 +194,10 @@
       </div>
     </div>
 
-    <!-- Панель Админа -->
     <div id="adminChatView" style="flex: 1; display: none; flex-direction: column; overflow: hidden;">
       <div style="font-size: 13px; font-weight: 700; color: #2196F3; margin-bottom: 5px;">Список тикетов:</div>
       <select id="adminTicketSelect" style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #ffa5004d; background: #0a190acc; color: #eaf5e6; margin-bottom: 10px; outline: none;"></select>
-      
       <div id="adminTicketsList" style="flex: 1; overflow-y: auto; margin-bottom: 10px; font-size: 12px; background: #0000004d; border-radius: 8px; padding: 5px;"></div>
-      
       <div style="display: flex; gap: 8px;">
         <input type="text" id="adminTicketInput" placeholder="Ответ игроку..." style="flex: 1; padding: 10px; font-size: 14px; margin: 0;">
         <button id="adminTicketSendBtn" class="small" style="width: 60px; padding: 0; margin: 0;">➤</button>
@@ -217,7 +206,7 @@
   </div>
 </div>
 
-<!-- Модальное окно для кейсов -->
+<!-- Модалка Кейсов -->
 <div class="modal-overlay" id="caseModal">
   <div class="modal">
     <div class="close-modal" onclick="closeModal()">×</div>
