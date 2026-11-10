@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, getDocs, query, where, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// ⚠️ ВАШИ КЛЮЧИ FIREBASE (уже вставлены)
+// ⚠️ ВАШИ КЛЮЧИ FIREBASE
 const firebaseConfig = {
   apiKey: "AIzaSyBT4O2-PZ-7k4-q1Rv8pQVjeRoBbGzQSao",
   authDomain: "burgerdrop.firebaseapp.com",
@@ -22,10 +22,23 @@ let unsubscribeSnap = null;
 let allUsersCache = [];
 
 function current(){ return currentUser; }
+
+// ⚠️ ФУНКЦИЯ СОХРАНЕНИЯ С ВЫВОДОМ ОШИБКИ
 function saveDB(){ 
   if(!currentUser) return;
   updateDoc(doc(db, "users", currentUser.uid), {
     coins: currentUser.coins, inventory: currentUser.inventory, activeItem: currentUser.activeItem
+  }).catch((error) => {
+    // Выводим ошибку прямо на экран, чтобы понять, в чем дело
+    let errBox = $('dbErrorBox');
+    if(!errBox) {
+      errBox = document.createElement('div');
+      errBox.id = 'dbErrorBox';
+      errBox.style.cssText = 'background:#ff4a4a; color:#fff; padding:10px; border-radius:8px; margin-bottom:10px; font-size:12px; font-weight:bold; z-index:9999; position:relative;';
+      document.querySelector('.game').prepend(errBox);
+    }
+    errBox.textContent = 'ОШИБКА БАЗЫ: ' + error.message;
+    console.error("Firebase Save Error:", error);
   });
 }
 
