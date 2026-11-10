@@ -21,12 +21,11 @@ let unsubscribeSnap = null;
 
 function current(){ return currentUser; }
 
-// Сохранение с выводом ошибки на экран
+// Сохранение в базу с выводом ошибки на экран (если что-то пойдет не так)
 function saveDB(){ 
   if(!currentUser) return;
   updateDoc(doc(db, "users", currentUser.uid), { coins: currentUser.coins })
   .catch(e => {
-    // Выводим ошибку прямо над балансом
     let errBox = $('dbErrorBox');
     if(!errBox) {
       errBox = document.createElement('div');
@@ -34,7 +33,7 @@ function saveDB(){
       errBox.style.cssText = 'background:#ff4a4a; color:#fff; padding:8px; border-radius:8px; margin-bottom:10px; font-size:12px; font-weight:bold;';
       document.querySelector('.game').prepend(errBox);
     }
-    errBox.textContent = 'ОШИБКА: ' + e.message;
+    errBox.textContent = 'ОШИБКА БАЗЫ: ' + e.message;
   });
 }
 
@@ -134,9 +133,9 @@ function doSpin(isFast){
   spinNeedle(angle,()=>{
     if(win){
       const winAmt=Math.floor(bet*100/chance);
-      u.coins+=winAmt; 
+      u.coins += winAmt; 
       updateBalance(); 
-      saveDB(); // Сохраняем выигрыш
+      saveDB(); // Отправляем в базу ПОСЛЕ прибавления монет
       playSound('win'); vibrate([100, 50, 100]);
       resultEl.className='result win'; resultEl.textContent='🍔 УДАЧА! +'+winAmt+' 🪙';
       hubText.className='hub-text win'; hubText.textContent='УДАЧА';
@@ -163,6 +162,7 @@ function pickPrize(items){let r=Math.random()*totalW(items);for(const i of items
 function renderCases(){const grid=$('caseGrid');grid.innerHTML='';CASES.forEach(c=>{const d=document.createElement('div');d.className='case-tile';d.innerHTML=`<div class="emoji">${c.emoji}</div><div class="name">${c.name}</div><div class="price">${c.price} 🪙</div>`;d.onclick=()=>openCaseModal(c.id);grid.appendChild(d)})}
 function openCaseModal(id){const c=CASES.find(x=>x.id===id);if(!c)return;$('caseModal').classList.add('active');$('modalLog').textContent='';$('modalTitle').textContent=`${c.emoji} ${c.name} (${c.price}🪙)`;const tw=totalW(c.items);$('modalContents').innerHTML=c.items.map(i=>`<div class="modal-item">${i.emoji} ${i.name} <b>${(i.w/tw*100).toFixed(1)}%</b> → ${i.val}🪙</div>`).join('');$('modalContents').style.display='flex';const b=$('modalOpenBtn');b.textContent=`ОТКРЫТЬ ЗА ${c.price} 🪙`;b.disabled=false;b.onclick=()=>spinCase(c);$('modalRouletteWrap').innerHTML=''}
 window.closeModal=()=>{$('caseModal').classList.remove('active')};
+
 function spinCase(c){
   const u=current(); 
   if(u.coins<c.price){$('modalLog').textContent='Мало монет!';return}
@@ -173,9 +173,9 @@ function spinCase(c){
   const strip=$('strip');strip.innerHTML=cells.map(i=>`<div class="roulette-cell">${i.emoji}</div>`).join('');playSound('spin');
   setTimeout(()=>{const view=document.querySelector('.roulette-view'),offset=-(32*66)+(view.offsetWidth/2)-30;strip.style.transition='transform 3s cubic-bezier(.1,.8,.2,1)';strip.style.transform=`translateX(${offset}px)`},50);
   setTimeout(()=>{
-    u.coins+=winner.val; 
+    u.coins += winner.val; 
     updateBalance(); 
-    saveDB(); // Сохраняем выигрыш в кейсе
+    saveDB(); // Отправляем в базу ПОСЛЕ прибавления монет
     playSound('win');vibrate(100);
     $('modalLog').textContent=`🎁 Выпало: ${winner.emoji} ${winner.name} (+${winner.val} 🪙)`;
     b.textContent='ЗАКРЫТЬ';b.disabled=false;b.onclick=closeModal;
