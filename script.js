@@ -20,7 +20,6 @@ let currentUser = null;
 let unsubscribeSnap = null;
 let unsubscribeTickets = null;
 let unsubscribeAdminTickets = null;
-let unsubscribePlayersList = null;
 
 function current(){ return currentUser; }
 
@@ -144,11 +143,18 @@ if($('upgradeBet')) $('upgradeBet').addEventListener('input', updateUpgraderPrev
 
 let currentRotation = 0, spinning = false, bonusMode = false, bonusStreak = 0, purpleActive = false, goldActive = false;
 
-function spinNeedle(targetAngle,onDone,fast){
-  const currentMod=((currentRotation%360)+360)%360,desired=((targetAngle%360)+360)%360,delta=(desired-currentMod+360)%360;
-  currentRotation+= (fast?2:4)*360+delta; 
-  if($('needle')) $('needle').style.transform='rotate('+(currentRotation-90)+'deg)';
-  setTimeout(onDone, fast ? 1000 : 5000); 
+function spinNeedle(targetAngle, onDone, fast) {
+  const currentMod = ((currentRotation % 360) + 360) % 360;
+  const desired = ((targetAngle % 360) + 360) % 360;
+  const delta = (desired - currentMod + 360) % 360;
+  
+  // Если быстрая - делаем 1 оборот. Если обычная - 4 оборота.
+  currentRotation += (fast ? 1 : 4) * 360 + delta;
+  
+  if ($('needle')) $('needle').style.transform = 'rotate(' + (currentRotation - 90) + 'deg)';
+  
+  // Ждем 1 секунду для быстрой, 4 секунды для обычной
+  setTimeout(onDone, fast ? 1000 : 4000);
 }
 
 async function doUpgrade(isFast){
@@ -172,7 +178,6 @@ async function doUpgrade(isFast){
   purpleActive = false; goldActive = false;
   let roll = Math.random() * 100;
   
-  // Бонусы появляются с шансом 10%, но шанс попадания 20%
   let bonusHit = false;
   if (roll < 10) {
     purpleActive = true;
@@ -213,15 +218,27 @@ async function doUpgrade(isFast){
         const winAmt = Math.floor(betAmount * mult);
         u.coins += winAmt; updateBalance(); await addCoins(winAmt);
         $('result').className='result win'; $('result').textContent='🍔 УДАЧА! +' + winAmt + ' 🪙';
+        if($('hubText')) { $('hubText').className='hub-text win'; $('hubText').textContent='УДАЧА'; }
       spinning = false;
       if($('spinBtn')) $('spinBtn').disabled = false; if($('fastSpinBtn')) $('fastSpinBtn').disabled = false;
+      setTimeout(()=>{ if($('hubText')) { $('hubText').className='hub-text'; updateHub(); } }, 1500);
     } else {
       playSound('lose'); vibrate(200);
       $('result').className='result lose'; $('result').textContent='😢 НЕУДАЧА! Вы проиграли.';
+      if($('hubText')) { $('hubText').className='hub-text lose'; $('hubText').textContent='НЕУДАЧА'; }
       spinning = false;
       if($('spinBtn')) $('spinBtn').disabled = false; if($('fastSpinBtn')) $('fastSpinBtn').disabled = false;
+      setTimeout(()=>{ if($('hubText')) { $('hubText').className='hub-text'; updateHub(); } }, 1500);
     }
   }, isFast);
+}
+
+function updateHub() {
+  if(bonusMode){ 
+    if($('hubText')) { $('hubText').className='hub-text streak'; $('hubText').textContent='x'+bonusStreak; }
+  } else { 
+    if($('hubText')) { $('hubText').className='hub-text'; $('hubText').textContent=getVisualChance()+'%'; }
+  }
 }
 
 if($('spinBtn')) $('spinBtn').onclick = () => doUpgrade(false);
@@ -264,7 +281,7 @@ async function finishPurple(baseBet) {
       u.coins += winAmt; updateBalance(); await addCoins(winAmt);
       $('result').className='result win'; $('result').textContent = '🟣 БОНУС! Забрано: +' + winAmt + ' 🪙';
   }
-  if($('hubText')) $('hubText').className='hub-text';
+  if($('hubText')) { $('hubText').className='hub-text'; updateHub(); }
   spinning = false;
   if($('spinBtn')) $('spinBtn').disabled = false; if($('fastSpinBtn')) $('fastSpinBtn').disabled = false;
 }
@@ -300,6 +317,168 @@ function startGoldBonus(baseBet) {
     };
     $('modalLog').textContent = `Выпал множитель x${winner.mult}!`;
   }, 3150);
+}
+
+// ====== МИНЫ ======
+let minesActive = false, minesGrid = [], minesOpened = 0, minesBet = 0, minesCount = 3;
+function getMinesMultiplier() {
+  if(!minesActive) return 1;
+  const total = 25, safe = total - minesCount;
+  let mult = 1;
+  for(let i=0; i<minesOpened; i++) { mult *= (total - i) / (safe - i); }
+  return mult * 0.97;
+}
+
+if($('minesStartBtn')) $('minesStartBtn').onclick = async () => {
+  if(minesActive) return;
+  const u = current(); if(!u) return;
+  minesBet = parseInt($('minesBet').value);
+  minesCount = parseInt($('minesCount').value);
+  
+  if(minesBet < 1 || u.coins < minesBet) { $('minesStatus').textContent = 'Мало монет!'; $('minesStatus').style.color = '#ff6b4a'; return; }
+  
+  u.coins -= minesBet; updateBalance(); await addCoins(-minesBet);
+  
+  minesActive = true; minesOpened = 0;
+  $('minesStartBtn').style.display = 'none';
+  $('minesCashoutBtn').style.display = 'block';
+  $('minesCashoutBtn').textContent = `ЗАБРАТЬ (x1.00)`;
+  $('minesStatus').textContent = '';
+  
+  minesGrid = Array(25).fill(false);
+  let minesPlaced = 0;
+  while(minesPlaced < minesCount) {
+    let r = Math.floor(Math.random() * 25);
+    if(!minesGrid[r]) { minesGrid[r] = true; minesPlaced++; }
+  }
+  
+  const gridHTML = $('minesGrid'); gridHTML.innerHTML = '';
+  for(let i=0; i<25; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'mine-cell'; cell.dataset.index = i;
+    cell.onclick = () => openMineCell(i, cell);
+    gridHTML.appendChild(cell);
+  }
+};
+
+function openMineCell(index, cell) {
+  if(!minesActive || cell.classList.contains('opened')) return;
+  cell.classList.add('opened');
+  
+  if(minesGrid[index]) {
+    cell.classList.add('bomb'); cell.textContent = '💣';
+    playSound('lose'); vibrate(300);
+    $('minesStatus').textContent = 'Взрыв! Ставка сгорела.'; $('minesStatus').style.color = '#ff6b4a';
+    minesActive = false;
+    $('minesStartBtn').style.display = 'block'; $('minesCashoutBtn').style.display = 'none';
+    document.querySelectorAll('.mine-cell').forEach((c, i) => {
+      if(minesGrid[i] && !c.classList.contains('opened')) { c.classList.add('opened', 'bomb'); c.textContent = '💣'; }
+    });
+  } else {
+    cell.classList.add('star'); cell.textContent = '⭐';
+    minesOpened++;
+    const mult = getMinesMultiplier();
+    $('minesCashoutBtn').textContent = `ЗАБРАТЬ (x${mult.toFixed(2)})`;
+    playSound('win'); vibrate(20);
+    if(minesOpened === 25 - minesCount) cashoutMines();
+  }
+}
+
+async function cashoutMines() {
+  if(!minesActive || minesOpened === 0) return;
+  const mult = getMinesMultiplier();
+  const winAmt = Math.floor(minesBet * mult);
+  const u = current();
+  u.coins += winAmt; updateBalance(); await addCoins(winAmt);
+  
+  playSound('win'); vibrate([100, 50, 100]);
+  $('minesStatus').textContent = `Выигрыш: +${winAmt} 🪙 (x${mult.toFixed(2)})`; $('minesStatus').style.color = '#7ee06b';
+  
+  minesActive = false;
+  $('minesStartBtn').style.display = 'block'; $('minesCashoutBtn').style.display = 'none';
+  document.querySelectorAll('.mine-cell').forEach((c, i) => {
+    if(minesGrid[i] && !c.classList.contains('opened')) { c.classList.add('opened', 'bomb'); c.textContent = '💣'; }
+  });
+}
+if($('minesCashoutBtn')) $('minesCashoutBtn').onclick = cashoutMines;
+
+// ====== КРАШ ======
+let crashActive = false, crashMult = 1, crashTimer = null, crashBet = 0, crashAutoStop = 0, crashHistory = [];
+if($('crashStartBtn')) $('crashStartBtn').onclick = async () => {
+  if(crashActive) return;
+  const u = current(); if(!u) return;
+  crashBet = parseInt($('crashBet').value);
+  crashAutoStop = parseFloat($('crashAutoStop').value);
+  
+  if(crashBet < 1 || u.coins < crashBet) { $('crashStatus').textContent = 'Мало монет!'; $('crashStatus').style.color = '#ff6b4a'; return; }
+  
+  u.coins -= crashBet; updateBalance(); await addCoins(-crashBet);
+  
+  crashActive = true; crashMult = 1;
+  $('crashStartBtn').style.display = 'none';
+  $('crashCashoutBtn').style.display = 'block';
+  $('crashCashoutBtn').textContent = `ЗАБРАТЬ (x1.00)`;
+  $('crashStatus').textContent = 'Игра началась!'; $('crashStatus').style.color = '#b8d8a8';
+  
+  // Чем больше множитель, тем резче он растет (азартнее)
+  const crashPoint = 1 + (Math.random() * Math.random() * 15);
+  
+  crashTimer = setInterval(async () => {
+    if(!crashActive) return;
+    crashMult += 0.02 + (crashMult * 0.005); // Ускорение роста
+    $('crashMultiplier').textContent = `x${crashMult.toFixed(2)}`;
+    $('crashCashoutBtn').textContent = `ЗАБРАТЬ (x${crashMult.toFixed(2)})`;
+    
+    if(crashMult >= crashAutoStop) {
+      cashoutCrash();
+    }
+    
+    if(crashMult >= crashPoint) {
+      crashActive = false; clearInterval(crashTimer);
+      playSound('lose'); vibrate(300);
+      $('crashStatus').textContent = `КРАШ на x${crashMult.toFixed(2)}! Ставка сгорела.`; $('crashStatus').style.color = '#ff6b4a';
+      $('crashMultiplier').style.color = '#ff6b4a';
+      $('crashStartBtn').style.display = 'block';
+      $('crashCashoutBtn').style.display = 'none';
+      
+      crashHistory.unshift(crashMult);
+      if(crashHistory.length > 10) crashHistory.pop();
+      renderCrashHistory();
+    }
+  }, 100);
+  $('crashMultiplier').style.color = '#7ee06b';
+};
+
+async function cashoutCrash() {
+    if(!crashActive) return;
+    crashActive = false;
+    clearInterval(crashTimer);
+    
+    const u = current();
+    const winAmt = Math.floor(crashBet * crashMult);
+    u.coins += winAmt; updateBalance(); await addCoins(winAmt);
+    
+    playSound('win'); vibrate([100, 50, 100]);
+    $('crashStatus').textContent = `Вы забрали на x${crashMult.toFixed(2)}! Выигрыш: +${winAmt} 🪙`; 
+    $('crashStatus').style.color = '#7ee06b';
+    $('crashStartBtn').style.display = 'block';
+    $('crashCashoutBtn').style.display = 'none';
+    
+    crashHistory.unshift(crashMult);
+    if(crashHistory.length > 10) crashHistory.pop();
+    renderCrashHistory();
+}
+
+if($('crashCashoutBtn')) $('crashCashoutBtn').onclick = cashoutCrash;
+
+function renderCrashHistory() {
+    const box = $('crashHistory');
+    if(!box) return;
+    box.innerHTML = '';
+    crashHistory.forEach(mult => {
+        let color = mult >= 2 ? '#7ee06b' : '#ff6b4a';
+        box.innerHTML += `<span style="background: #0000004d; color: ${color}; padding: 4px 8px; border-radius: 5px; font-weight: bold; font-size: 12px;">x${mult.toFixed(2)}</span>`;
+    });
 }
 
 // ====== ПОДДЕРЖКА ======
@@ -385,11 +564,7 @@ async function fillAllSelects(){
     const d = doc.data(); 
     if(!d.isAdmin && selChance) selChance.innerHTML += `<option value="${doc.id}">${d.email}</option>`; 
     
-    // Список игроков для управления
     if(list) {
-      let status = '🔴 Оффлайн';
-      // Простая проверка онлайна (если coins менялись недавно, но мы не храним время, поэтому просто выведем)
-      // Для реального онлайна нужна проверка lastSeen, но пока оставим заглушку
       list.innerHTML += `
         <div style="display:flex; justify-content:space-between; align-items:center; padding: 5px 0; border-bottom: 1px solid #ffffff1a;">
           <div>${d.email}<br><span style="color:#ffcc66;">${d.coins} 🪙</span></div>
