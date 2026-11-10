@@ -34,9 +34,12 @@ async function saveInventory() {
   if(!currentUser) return;
   try { 
     await updateDoc(doc(db, "users", currentUser.uid), { 
-      coins: currentUser.coins, inventory: currentUser.inventory, activeItem: currentUser.activeItem
+      coins: currentUser.coins, 
+      inventory: currentUser.inventory, 
+      activeItem: currentUser.activeItem
     }); 
-  } catch(e) { console.error("Ошибка инвентаря:", e); }
+    console.log("Инвентарь сохранен:", currentUser.inventory);
+  } catch(e) { console.error("Ошибка сохранения инвентаря:", e); }
 }
 
 function playSound(type) {
@@ -118,25 +121,27 @@ function enterGame(){
 
 document.querySelectorAll('.tab[data-panel]').forEach(t=>t.addEventListener('click',()=>{document.querySelectorAll('.tab[data-panel]').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');$('panel-'+t.dataset.panel).classList.add('active');}));
 
-// ====== СПИСОК ПРЕДМЕТОВ (CS2) ======
+// ====== СПИСОК ПРЕДМЕТОВ (ЦЕНЫ УВЕЛИЧЕНЫ) ======
 const ALL_ITEMS = [
-  { name: 'P250 | Sand Dune', emoji: '🔫', val: 5, color: '#4b69ff' }, 
-  { name: 'MP9 | Storm', emoji: '🔫', val: 10, color: '#4b69ff' }, 
-  { name: 'Nova | Predator', emoji: '🔫', val: 15, color: '#4b69ff' }, 
-  { name: 'SG 553 | Waves', emoji: '🔫', val: 25, color: '#4b69ff' },
-  { name: 'MAC-10 | Candy Apple', emoji: '🔫', val: 40, color: '#8847ff' }, 
-  { name: 'AK-47 | Safari Mesh', emoji: '🔫', val: 60, color: '#8847ff' }, 
-  { name: 'AWP | Pit Viper', emoji: '🎯', val: 100, color: '#8847ff' }, 
-  { name: 'M4A1-S | Basilisk', emoji: '🔫', val: 150, color: '#d32ce6' }, 
-  { name: 'USP-S | Cortex', emoji: '🔫', val: 250, color: '#d32ce6' }, 
-  { name: 'Desert Eagle | Printstream', emoji: '🔫', val: 400, color: '#eb4b4b' },
-  { name: 'AK-47 | Redline', emoji: '🔫', val: 600, color: '#eb4b4b' }, 
-  { name: 'AWP | Asiimov', emoji: '🎯', val: 1000, color: '#eb4b4b' }, 
-  { name: 'AK-47 | Fire Serpent', emoji: '🔫', val: 2000, color: '#eb4b4b' },
-  { name: 'Bayonet | Doppler', emoji: '🗡️', val: 3500, color: '#ffcc00' }, 
-  { name: 'Flip Knife | Fade', emoji: '🔪', val: 4500, color: '#ffcc00' },
-  { name: 'Stiletto Knife | Marble Fade', emoji: '⚔️', val: 6000, color: '#ffcc00' },
-  { name: 'Butterfly Knife | Emerald', emoji: '🦋', val: 12000, color: '#ffcc00' }
+  { name: 'P250 | Sand Dune', emoji: '🔫', val: 10, color: '#4b69ff' }, 
+  { name: 'MP9 | Storm', emoji: '🔫', val: 20, color: '#4b69ff' }, 
+  { name: 'Glock-18 | Water Elemental', emoji: '🔫', val: 30, color: '#4b69ff' }, // НОВОЕ
+  { name: 'Nova | Predator', emoji: '🔫', val: 40, color: '#4b69ff' }, 
+  { name: 'SG 553 | Waves', emoji: '🔫', val: 60, color: '#4b69ff' },
+  { name: 'MAC-10 | Candy Apple', emoji: '🔫', val: 100, color: '#8847ff' }, 
+  { name: 'AK-47 | Safari Mesh', emoji: '🔫', val: 150, color: '#8847ff' }, 
+  { name: 'AWP | Pit Viper', emoji: '🎯', val: 250, color: '#8847ff' }, 
+  { name: 'M4A1-S | Basilisk', emoji: '🔫', val: 400, color: '#d32ce6' }, 
+  { name: 'USP-S | Cortex', emoji: '🔫', val: 600, color: '#d32ce6' }, 
+  { name: 'Desert Eagle | Printstream', emoji: '🔫', val: 1000, color: '#eb4b4b' },
+  { name: 'AK-47 | Redline', emoji: '🔫', val: 1500, color: '#eb4b4b' }, 
+  { name: 'M4A4 | Howl', emoji: '🔫', val: 2500, color: '#eb4b4b' }, // НОВОЕ
+  { name: 'AWP | Asiimov', emoji: '🎯', val: 3000, color: '#eb4b4b' }, 
+  { name: 'AK-47 | Fire Serpent', emoji: '🔫', val: 5000, color: '#eb4b4b' },
+  { name: 'Bayonet | Doppler', emoji: '🗡️', val: 8000, color: '#ffcc00' }, 
+  { name: 'Flip Knife | Fade', emoji: '🔪', val: 10000, color: '#ffcc00' },
+  { name: 'Stiletto Knife | Marble Fade', emoji: '⚔️', val: 15000, color: '#ffcc00' }, // НОВОЕ (3-й нож)
+  { name: 'Butterfly Knife | Emerald', emoji: '🦋', val: 25000, color: '#ffcc00' }
 ];
 
 // ====== ПЕРЕКЛЮЧАТЕЛЬ РЕЖИМА АПГРЕЙДЕРА ======
@@ -389,7 +394,6 @@ function startGoldBonus(baseBet, item, mult) {
   let r = Math.random() * 100, winner = items[0];
   for(let i of items) { if (r < i.chance) { winner = i; break; } r -= i.chance; }
 
-  // Красивое открытие золотого кейса
   $('caseModal').classList.add('active'); $('modalTitle').textContent = '🟡 ЗОЛОТОЙ КЕЙС'; $('modalContents').style.display='none'; $('modalLog').textContent = '';
   const b = $('modalOpenBtn'); b.disabled = true; b.textContent = 'КРУТИМ...';
   $('modalRouletteWrap').innerHTML = '<div class="roulette-view"><div class="roulette-strip" id="strip"></div><div class="roulette-marker"></div></div>';
@@ -631,75 +635,75 @@ function renderCrashHistory() {
     });
 }
 
-// ====== КЕЙСЫ (С ПОВЫШЕННЫМИ ШАНСАМИ) ======
+// ====== КЕЙСЫ (ОБНОВЛЕННЫЕ ЦЕНЫ И НОВЫЕ ПУШКИ) ======
 const CASES = [
   { id: '1', name: 'Начальный', price: 50, emoji: '🔫', 
     items: [
-      { name: 'P250 | Sand Dune', emoji: '🔫', w: 35, val: 5, color: '#4b69ff' },
-      { name: 'MP9 | Storm', emoji: '🔫', w: 30, val: 10, color: '#4b69ff' },
-      { name: 'Nova | Predator', emoji: '🔫', w: 20, val: 15, color: '#4b69ff' },
-      { name: 'SG 553 | Waves', emoji: '🔫', w: 12, val: 25, color: '#4b69ff' },
-      { name: 'MAC-10 | Candy Apple', emoji: '🔫', w: 3, val: 40, color: '#8847ff' }
+      { name: 'P250 | Sand Dune', emoji: '🔫', w: 35, val: 10, color: '#4b69ff' },
+      { name: 'MP9 | Storm', emoji: '🔫', w: 30, val: 20, color: '#4b69ff' },
+      { name: 'Glock-18 | Water Elemental', emoji: '🔫', w: 20, val: 30, color: '#4b69ff' },
+      { name: 'Nova | Predator', emoji: '🔫', w: 12, val: 40, color: '#4b69ff' },
+      { name: 'SG 553 | Waves', emoji: '🔫', w: 3, val: 60, color: '#4b69ff' }
     ]
   },
   { id: '2', name: 'Синий', price: 100, emoji: '🔵', 
     items: [
-      { name: 'MP9 | Storm', emoji: '🔫', w: 30, val: 10, color: '#4b69ff' },
-      { name: 'Nova | Predator', emoji: '🔫', w: 30, val: 15, color: '#4b69ff' },
-      { name: 'SG 553 | Waves', emoji: '🔫', w: 22, val: 25, color: '#4b69ff' },
-      { name: 'MAC-10 | Candy Apple', emoji: '🔫', w: 12, val: 40, color: '#8847ff' },
-      { name: 'AK-47 | Safari Mesh', emoji: '🔫', w: 5, val: 60, color: '#8847ff' },
-      { name: 'AWP | Pit Viper', emoji: '🎯', w: 1, val: 100, color: '#8847ff' }
+      { name: 'MP9 | Storm', emoji: '🔫', w: 30, val: 20, color: '#4b69ff' },
+      { name: 'Glock-18 | Water Elemental', emoji: '🔫', w: 30, val: 30, color: '#4b69ff' },
+      { name: 'Nova | Predator', emoji: '🔫', w: 22, val: 40, color: '#4b69ff' },
+      { name: 'SG 553 | Waves', emoji: '🔫', w: 12, val: 60, color: '#4b69ff' },
+      { name: 'MAC-10 | Candy Apple', emoji: '🔫', w: 5, val: 100, color: '#8847ff' },
+      { name: 'AK-47 | Safari Mesh', emoji: '🔫', w: 1, val: 150, color: '#8847ff' }
     ]
   },
   { id: '3', name: 'Фиолетовый', price: 200, emoji: '🟣', 
     items: [
-      { name: 'SG 553 | Waves', emoji: '🔫', w: 35, val: 25, color: '#4b69ff' },
-      { name: 'MAC-10 | Candy Apple', emoji: '🔫', w: 30, val: 40, color: '#8847ff' },
-      { name: 'AK-47 | Safari Mesh', emoji: '🔫', w: 22, val: 60, color: '#8847ff' },
-      { name: 'AWP | Pit Viper', emoji: '🎯', w: 9, val: 100, color: '#8847ff' },
-      { name: 'M4A1-S | Basilisk', emoji: '🔫', w: 3.5, val: 150, color: '#d32ce6' },
-      { name: 'USP-S | Cortex', emoji: '🔫', w: 0.5, val: 250, color: '#d32ce6' }
+      { name: 'SG 553 | Waves', emoji: '🔫', w: 35, val: 60, color: '#4b69ff' },
+      { name: 'MAC-10 | Candy Apple', emoji: '🔫', w: 30, val: 100, color: '#8847ff' },
+      { name: 'AK-47 | Safari Mesh', emoji: '🔫', w: 22, val: 150, color: '#8847ff' },
+      { name: 'AWP | Pit Viper', emoji: '🎯', w: 9, val: 250, color: '#8847ff' },
+      { name: 'M4A1-S | Basilisk', emoji: '🔫', w: 3.5, val: 400, color: '#d32ce6' },
+      { name: 'USP-S | Cortex', emoji: '🔫', w: 0.5, val: 600, color: '#d32ce6' }
     ]
   },
   { id: '4', name: 'Розовый', price: 350, emoji: '🌸', 
     items: [
-      { name: 'AK-47 | Safari Mesh', emoji: '🔫', w: 35, val: 60, color: '#8847ff' },
-      { name: 'AWP | Pit Viper', emoji: '🎯', w: 30, val: 100, color: '#8847ff' },
-      { name: 'M4A1-S | Basilisk', emoji: '🔫', w: 18, val: 150, color: '#d32ce6' },
-      { name: 'USP-S | Cortex', emoji: '🔫', w: 12, val: 250, color: '#d32ce6' },
-      { name: 'Desert Eagle | Printstream', emoji: '🔫', w: 4, val: 400, color: '#eb4b4b' },
-      { name: 'AK-47 | Redline', emoji: '🔫', w: 1, val: 600, color: '#eb4b4b' }
+      { name: 'AK-47 | Safari Mesh', emoji: '🔫', w: 35, val: 150, color: '#8847ff' },
+      { name: 'AWP | Pit Viper', emoji: '🎯', w: 30, val: 250, color: '#8847ff' },
+      { name: 'M4A1-S | Basilisk', emoji: '🔫', w: 18, val: 400, color: '#d32ce6' },
+      { name: 'USP-S | Cortex', emoji: '🔫', w: 12, val: 600, color: '#d32ce6' },
+      { name: 'Desert Eagle | Printstream', emoji: '🔫', w: 4, val: 1000, color: '#eb4b4b' },
+      { name: 'AK-47 | Redline', emoji: '🔫', w: 1, val: 1500, color: '#eb4b4b' }
     ]
   },
   { id: '5', name: 'Красный', price: 500, emoji: '🔴', 
     items: [
-      { name: 'M4A1-S | Basilisk', emoji: '🔫', w: 35, val: 150, color: '#d32ce6' },
-      { name: 'USP-S | Cortex', emoji: '🔫', w: 28, val: 250, color: '#d32ce6' },
-      { name: 'Desert Eagle | Printstream', emoji: '🔫', w: 20, val: 400, color: '#eb4b4b' },
-      { name: 'AK-47 | Redline', emoji: '🔫', w: 12, val: 600, color: '#eb4b4b' },
-      { name: 'AWP | Asiimov', emoji: '🎯', w: 4, val: 1000, color: '#eb4b4b' },
-      { name: 'AK-47 | Fire Serpent', emoji: '🔫', w: 1, val: 2000, color: '#eb4b4b' }
+      { name: 'M4A1-S | Basilisk', emoji: '🔫', w: 35, val: 400, color: '#d32ce6' },
+      { name: 'USP-S | Cortex', emoji: '🔫', w: 28, val: 600, color: '#d32ce6' },
+      { name: 'Desert Eagle | Printstream', emoji: '🔫', w: 20, val: 1000, color: '#eb4b4b' },
+      { name: 'AK-47 | Redline', emoji: '🔫', w: 12, val: 1500, color: '#eb4b4b' },
+      { name: 'M4A4 | Howl', emoji: '🔫', w: 4, val: 2500, color: '#eb4b4b' },
+      { name: 'AWP | Asiimov', emoji: '🎯', w: 1, val: 3000, color: '#eb4b4b' }
     ]
   },
   { id: '6', name: 'Ножевой', price: 1000, emoji: '🔪', 
     items: [
-      { name: 'AK-47 | Redline', emoji: '🔫', w: 40, val: 600, color: '#eb4b4b' },
-      { name: 'AWP | Asiimov', emoji: '🎯', w: 30, val: 1000, color: '#eb4b4b' },
-      { name: 'AK-47 | Fire Serpent', emoji: '🔫', w: 18, val: 2000, color: '#eb4b4b' },
-      { name: 'Bayonet | Doppler', emoji: '🗡️', w: 8, val: 3500, color: '#ffcc00' },
-      { name: 'Flip Knife | Fade', emoji: '🔪', w: 3, val: 4500, color: '#ffcc00' },
-      { name: 'Stiletto Knife | Marble Fade', emoji: '⚔️', w: 1, val: 6000, color: '#ffcc00' }
+      { name: 'AK-47 | Redline', emoji: '🔫', w: 40, val: 1500, color: '#eb4b4b' },
+      { name: 'M4A4 | Howl', emoji: '🔫', w: 30, val: 2500, color: '#eb4b4b' },
+      { name: 'AWP | Asiimov', emoji: '🎯', w: 18, val: 3000, color: '#eb4b4b' },
+      { name: 'AK-47 | Fire Serpent', emoji: '🔫', w: 8, val: 5000, color: '#eb4b4b' },
+      { name: 'Bayonet | Doppler', emoji: '🗡️', w: 3, val: 8000, color: '#ffcc00' },
+      { name: 'Flip Knife | Fade', emoji: '🔪', w: 1, val: 10000, color: '#ffcc00' }
     ]
   },
   { id: '7', name: 'Топ', price: 2000, emoji: '💎', 
     items: [
-      { name: 'AWP | Asiimov', emoji: '🎯', w: 45, val: 1000, color: '#eb4b4b' },
-      { name: 'AK-47 | Fire Serpent', emoji: '🔫', w: 25, val: 2000, color: '#eb4b4b' },
-      { name: 'Bayonet | Doppler', emoji: '🗡️', w: 15, val: 3500, color: '#ffcc00' },
-      { name: 'Flip Knife | Fade', emoji: '🔪', w: 8, val: 4500, color: '#ffcc00' },
-      { name: 'Stiletto Knife | Marble Fade', emoji: '⚔️', w: 5, val: 6000, color: '#ffcc00' },
-      { name: 'Butterfly Knife | Emerald', emoji: '🦋', w: 2, val: 12000, color: '#ffcc00' }
+      { name: 'AWP | Asiimov', emoji: '🎯', w: 45, val: 3000, color: '#eb4b4b' },
+      { name: 'AK-47 | Fire Serpent', emoji: '🔫', w: 25, val: 5000, color: '#eb4b4b' },
+      { name: 'Bayonet | Doppler', emoji: '🗡️', w: 15, val: 8000, color: '#ffcc00' },
+      { name: 'Flip Knife | Fade', emoji: '🔪', w: 8, val: 10000, color: '#ffcc00' },
+      { name: 'Stiletto Knife | Marble Fade', emoji: '⚔️', w: 5, val: 15000, color: '#ffcc00' },
+      { name: 'Butterfly Knife | Emerald', emoji: '🦋', w: 2, val: 25000, color: '#ffcc00' }
     ]
   }
 ];
@@ -755,10 +759,15 @@ async function spinCase(c){
   },50);
 
   setTimeout(async ()=>{
+    // Сохраняем предмет в инвентарь (в памяти)
     const old = u.inventory.find(i => i.name === winner.name);
     if(old) old.count += 1; else u.inventory.push({ name: winner.name, emoji: winner.emoji, val: winner.val, count: 1, color: winner.color });
     
-    updateBalance(); renderInventory(); renderInventorySelect(); await saveInventory();
+    // Принудительно обновляем баланс и сохраняем в базу
+    updateBalance(); 
+    renderInventory(); 
+    renderInventorySelect(); 
+    await saveInventory();
     
     playSound('win'); vibrate(100);
     $('modalLog').textContent=`🎁 Выпало: ${winner.name} (${winner.val} 🪙)`;
