@@ -33,12 +33,48 @@
   <div class="userbar"><span>👤 <span id="userName">—</span></span><button id="logoutBtn">Выйти</button></div>
   <div class="balance"><span class="label">Баланс</span><span class="coins-val"><span id="balance">100</span> 🪙</span></div>
   <div class="tabs">
-    <button class="tab active" data-panel="game">🎡 Апргрейдер</button>
+    <button class="tab active" data-panel="game">🎡 Апгрейдер</button>
     <button class="tab" data-panel="cases">🎁 Кейсы</button>
     <button class="tab" data-panel="clicker">👆 Кликер</button>
     <button class="tab" data-panel="admin" id="adminTab" style="display:none">🛡 Админ</button>
   </div>
   
+  <!-- АПГРЕЙДЕР -->
+  <div class="panel active" id="panel-game">
+   <div class="wheel-wrap"><div class="wheel" id="wheel"></div><div class="hub-text" id="hubText">50%</div><div class="needle-spinner" id="needle"><div class="needle-arm"></div></div></div>
+   
+   <div class="row">
+     <div><label>Предмет</label>
+       <select id="upgradeItem" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ffa5004d; background: #0a190acc; color: #eaf5e6; font-size: 16px; font-weight: 600; outline: none;">
+         <option value="">-- Выберите предмет --</option>
+       </select>
+     </div>
+     <div><label>Шанс (%)</label><input type="number" id="chance" value="50" min="0.1" max="99" step="0.1"></div>
+   </div>
+
+   <div class="preview">
+     <div>Множитель: <span class="mult" id="multPreview">x2.00</span></div>
+     <div>Выигрыш: <span class="win-amt" id="winPreview">+0</span> 🪙</div>
+   </div>
+   
+   <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+     <button id="spinBtn" style="flex: 1; margin-bottom: 0;">АПГРЕЙД 🎡</button>
+     <button id="fastSpinBtn" style="width: 60px; flex: none; padding: 0; font-size: 28px;">⚡</button>
+   </div>
+   <div class="result" id="result"></div>
+   <div class="bonus-bar-wrap" id="bonusBarWrap"><div class="bonus-bar-text" id="bonusBarText">x1</div><div class="bonus-bar" id="bonusBar"></div><div class="bonus-marker"></div></div>
+  </div>
+
+  <!-- КЕЙСЫ -->
+  <div class="panel" id="panel-cases">
+    <div class="section-title">Выбери кейс</div>
+    <div class="case-grid" id="caseGrid"></div>
+  </div>
+
+  <!-- КЛИКЕР -->
+  <div class="panel" id="panel-clicker"><div class="section-title">Кликер</div><div class="burger-click" id="burgerClick">🍔</div><div class="clicker-stats"><div>За клик: <b id="perClick">1</b></div><div>Кликов: <b id="clickCount">0</b></div></div><button id="buyAuto">Купить автокликер (50 🪙)</button><div class="log" id="clickerLog"></div></div>
+  
+  <!-- АДМИНКА -->
   <div class="panel" id="panel-admin">
     <div class="section-title">🛡 Админ-панель</div>
     <div class="case-block">
@@ -62,39 +98,20 @@
       <div class="log" id="adminTrollLog"></div>
     </div>
   </div>
-   <div class="wheel-wrap"><div class="wheel" id="wheel"></div><div class="hub-text" id="hubText">50%</div><div class="needle-spinner" id="needle"><div class="needle-arm"></div></div></div>
-   <div class="row"><div><label>Ставка</label><input type="number" id="bet" value="10" min="1"></div><div><label>Шанс (%)</label><input type="number" id="chance" value="50" min="0.1" max="99" step="0.1"></div></div>
-   <div class="preview"><div>Множитель: <span class="mult" id="multPreview">x2.00</span></div><div>Выигрыш: <span class="win-amt" id="winPreview">+20</span> 🪙</div></div>
-   
-   <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-     <button id="spinBtn" style="flex: 1; margin-bottom: 0;">КРУТИТЬ 🎡</button>
-     <button id="fastSpinBtn" style="width: 60px; flex: none; padding: 0; font-size: 28px;">⚡</button>
-   </div>
-   
-   <div class="result" id="result"></div>
-  </div>
-
-  <div class="panel" id="panel-cases"><div class="section-title">Выбери кейс</div><div class="case-grid" id="caseGrid"></div><div class="log" id="caseLog"></div></div>
-  <div class="panel" id="panel-clicker"><div class="section-title">Кликер</div><div class="burger-click" id="burgerClick">🍔</div><div class="clicker-stats"><div>За клик: <b id="perClick">1</b></div><div>Кликов: <b id="clickCount">0</b></div></div><button id="buyAuto">Купить автокликер (50 🪙)</button><div class="log" id="clickerLog"></div></div>
-  
-  <div class="panel" id="panel-admin">
-    <div class="section-title">🛡 Админ-панель</div>
-    <div class="case-block">
-      <div style="font-size:13px;font-weight:700;margin-bottom:8px">💰 Выдать монеты</div>
-      <div class="admin-field"><label>Email игрока</label><input type="text" id="adminTarget" placeholder="player@test.com"></div>
-      <div class="admin-row"><input type="number" id="adminCoins" value="100" min="1"><button class="small" id="adminGiveBtn">ВЫДАТЬ</button></div>
-      <div class="log" id="adminGiveLog"></div>
-    </div>
-    <div class="case-block">
-      <div style="font-size:13px;font-weight:700;margin-bottom:8px">💀 Приколы</div>
-      <div class="admin-field"><label>Игрок</label><select id="adminTrollTarget"></select></div>
-      <div class="admin-row"><button class="small btn-gold" id="adminGodBtn">БОГ</button><button class="small btn-danger" id="adminZeroBtn">ОБНУЛИТЬ</button></div>
-      <div class="log" id="adminTrollLog"></div>
-    </div>
-  </div>
  </div>
 </div>
-<div class="modal-overlay" id="caseModal"><div class="modal"><div class="close-modal" onclick="closeModal()">×</div><div class="modal-head" id="modalTitle">Название</div><div class="modal-contents" id="modalContents"></div><div id="modalRouletteWrap"></div><button id="modalOpenBtn" class="small">ОТКРЫТЬ</button><div class="log" id="modalLog"></div></div></div>
+
+<div class="modal-overlay" id="caseModal">
+  <div class="modal">
+    <div class="close-modal" onclick="closeModal()">×</div>
+    <div class="modal-head" id="modalTitle">Название</div>
+    <div class="modal-contents" id="modalContents"></div>
+    <div id="modalRouletteWrap"></div>
+    <button id="modalOpenBtn" class="small">ОТКРЫТЬ</button>
+    <div class="log" id="modalLog"></div>
+  </div>
+</div>
+
 <script type="module" src="script.js"></script>
 </body>
 </html>
