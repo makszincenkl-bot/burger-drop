@@ -133,7 +133,7 @@ function renderInventorySelect() {
   const u = current();
   let currentVal = sel.value;
   
-  sel.innerHTML = '<option value="coins">🪙 Монеты (Весь баланс)</option>';
+  sel.innerHTML = '<option value="coins">🪙 Монеты</option>';
   if(u && u.inventory && u.inventory.length > 0) {
     u.inventory.forEach(item => { sel.innerHTML += `<option value="${item.name}">${item.emoji} ${item.name} (x${item.count}) - ${item.val}🪙</option>`; });
   }
@@ -149,7 +149,7 @@ if($('upgradeItem')) $('upgradeItem').onchange = () => { updateUpgraderPreview()
 
 function getSelectedItem() {
   const val = $('upgradeItem').value;
-  if(val === 'coins') return { name: 'Монеты', emoji: '🪙', val: current().coins, isCoins: true };
+  if(val === 'coins') return { name: 'Монеты', emoji: '🪙', isCoins: true };
   const u = current();
   return u.inventory.find(i => i.name === val);
 }
@@ -159,64 +159,118 @@ function updateUpgraderPreview() {
   const item = getSelectedItem();
   const chance = parseFloat($('chance').value) || 50;
   const mult = 100 / chance;
-  const bet = item ? (item.isCoins ? item.val : item.val) : 0;
+  let bet = 0;
+  
+  if(item) {
+      if(item.isCoins) bet = parseFloat($('upgradeBet').value) || 0;
+      else bet = item.val;
+  }
   
   $('multPreview').textContent = 'x' + (mult >= 100 ? mult.toFixed(0) : mult.toFixed(2));
   $('winPreview').textContent = '+' + Math.floor(bet * mult) + (item && item.isCoins ? ' 🪙' : ' (Предмет)');
+  
+  drawWheel(chance);
 }
 
 if($('chance')) $('chance').addEventListener('input', updateUpgraderPreview);
+if($('upgradeBet')) $('upgradeBet').addEventListener('input', updateUpgraderPreview);
 
 if($('spinBtn')) $('spinBtn').onclick = () => doUpgrade(false);
 if($('fastSpinBtn')) $('fastSpinBtn').onclick = () => doUpgrade(true);
 
-let currentRotation = 0, spinning = false;
+let currentRotation = 0, spinning = false, bonusMode = false, bonusStreak = 0, purpleActive = false, goldActive = false;
 
-function spinNeedle(targetAngle, onDone, fast) {
-  const currentMod = ((currentRotation % 360) + 360) % 360;
-  const desired = ((targetAngle % 360) + 360) % 360;
-  const delta = (desired - currentMod + 360) % 360;
-  currentRotation += (fast ? 2 : 4) * 360 + delta;
-  if($('needle')) $('needle').style.transform = 'rotate(' + (currentRotation - 90) + 'deg)';
-  setTimeout(onDone, fast ? 1000 : 5000);
+function getEffectiveChance(){ const u=current(); if(u && u.forcedChance) return Number(u.forcedChance); return Math.min(99,Math.max(.1,parseFloat($('chance').value)||50)); }
+
+function drawWheel(chance){
+  if(!$('wheel')) return;
+  const gd=chance*3.6, gs=180-gd/2, ge=180+gd/2;
+  let stops=`#2a1a0a 0deg,#3a2410 ${gs}deg,#4ca832 ${gs}deg,#7ee06b 180deg,#3d8f27 ${ge}deg,#1a0f05 ${ge}deg,#2a1a0a 360deg`;
+  if(purpleActive){ stops=`#2a1a0a 0deg,#3a2410 ${gs}deg,#4ca832 ${gs}deg,#7ee06b 172.5deg,#9b4dca 172.5deg,#c77dff 180deg,#7b2cbf 187.5deg,#7ee06b 187.5deg,#3d8f27 ${ge}deg,#1a0f05 ${ge}deg,#2a1a0a 360deg`; }
+  if(goldActive){ stops=`#2a1a0a 0deg,#3a2410 ${gs}deg,#4ca832 ${gs}deg,#7ee06b 172.5deg,#ffcc00 172.5deg,#ffea00 180deg,#b38f00 187.5deg,#7ee06b 187.5deg,#3d8f27 ${ge}deg,#1a0f05 ${ge}deg,#2a1a0a 360deg`; }
+  $('wheel').style.background=`conic-gradient(from 0deg,${stops})`;
 }
 
-async function doUpgrade(isFast) {
+function spinNeedle(targetAngle,onDone,fast){
+  const currentMod=((currentRotation%360)+360)%360,desired=((targetAngle%360)+360)%360,delta=(desired-currentMod+360)%360;
+  currentRotation+= (fast?2:4)*360+delta; 
+  if($('needle')) $('needle').style.transform='rotate('+(currentRotation-90)+'deg)';
+  setTimeout(onDone, fast ? 1000 : 5000); 
+}
+
+async function doUpgrade(isFast){
   const u = current();
-  if(!u || spinning) return;
+  if(!u || spinning || bonusMode) return;
 
   const item = getSelectedItem();
   if(!item) { $('result').textContent = 'Выберите предмет!'; $('result').className = 'result lose'; return; }
   
-  const betAmount = item.isCoins ? item.val : item.val; 
-  if(betAmount < 1) { $('result').textContent = 'Недостаточно средств!'; $('result').className = 'result lose'; return; }
+  let betAmount = 0;
+  if(item.isCoins) {
+      betAmount = parseFloat($('upgradeBet').value) || 0;
+      if(betAmount < 1 || u.coins < betAmount) { $('result').textContent = 'Недостаточно монет!'; $('result').className = 'result lose'; return; }
+  } else {
+      betAmount = item.val;
+  }
 
-  const chance = parseFloat($('chance').value) || 50;
+  const chance = getEffectiveChance();
   const mult = 100 / chance;
 
   spinning = true;
   if($('spinBtn')) $('spinBtn').disabled = true; if($('fastSpinBtn')) $('fastSpinBtn').disabled = true;
 
+  // Списываем ставку
   if(item.isCoins) {
-      if(u.coins < betAmount) { spinning = false; $('spinBtn').disabled=false; $('fastSpinBtn').disabled=false; return; }
       u.coins -= betAmount; updateBalance(); await addCoins(-betAmount);
   } else {
       const idx = u.inventory.findIndex(i => i.name === item.name);
-      u.inventory[idx].count--;
-      if(u.inventory[idx].count <= 0) u.inventory.splice(idx, 1);
-      renderInventorySelect(); renderInventory(); await saveInventory();
+      if(idx !== -1) {
+          u.inventory[idx].count--;
+          if(u.inventory[idx].count <= 0) u.inventory.splice(idx, 1);
+          renderInventorySelect(); renderInventory(); await saveInventory();
+      }
   }
 
   $('result').textContent = '';
   
-  const win = Math.random() * 100 < chance;
-  
-  spinNeedle(win ? 180 : 0, async () => { 
-    if(win) {
+  // Логика бонусов (10% шанс)
+  purpleActive = false; goldActive = false;
+  let roll = Math.random() * 100;
+  if (roll < 10) purpleActive = true;
+  else if (roll < 20) goldActive = true;
+
+  let targetAngle = 0;
+  let outcome = 'lose';
+
+  if (purpleActive) { outcome = 'purple'; targetAngle = 180; }
+  else if (goldActive) { outcome = 'gold'; targetAngle = 180; }
+  else {
+      const gs=180-chance*1.8, ge=180+chance*1.8;
+      targetAngle = Math.random() * 360;
+      if (targetAngle >= 172.5 && targetAngle <= 187.5) targetAngle = 200; 
+      if (targetAngle >= gs && targetAngle <= ge) outcome = 'win';
+  }
+
+  drawWheel(chance); 
+  if(outcome !== 'win' && outcome !== 'lose' && $('hubText')) $('hubText').textContent='...';
+
+  spinNeedle(targetAngle, async ()=>{
+    purpleActive = false; goldActive = false;
+    drawWheel(getEffectiveChance());
+
+    if(outcome==='purple'){ 
+        $('result').className='result bonus'; $('result').textContent='🟣 БОНУС УДВОЕНИЯ!'; 
+        startBonus(betAmount, item); 
+    } 
+    else if (outcome==='gold') { 
+        $('result').className='result bonus'; $('result').textContent='🟡 ЗОЛОТОЙ БОНУС!'; 
+        startGoldBonus(betAmount, item); 
+    } 
+    else if(outcome==='win'){
       if(item.isCoins) {
         const winAmt = Math.floor(betAmount * mult);
         u.coins += winAmt; updateBalance(); await addCoins(winAmt);
-        $('result').textContent = '🍔 УДАЧА! +' + winAmt + ' 🪙';
+        $('result').className='result win'; $('result').textContent='🍔 УДАЧА! +' + winAmt + ' 🪙';
       } else {
         const targetVal = item.val * mult;
         let prize = ALL_ITEMS.find(i => i.val >= targetVal) || ALL_ITEMS[ALL_ITEMS.length-1];
@@ -224,16 +278,96 @@ async function doUpgrade(isFast) {
         if(old) old.count++; else u.inventory.push({ name: prize.name, emoji: prize.emoji, val: prize.val, count: 1 });
         
         renderInventorySelect(); renderInventory(); await saveInventory();
-        $('result').textContent = '🎁 УДАЧА! Выпало: ' + prize.emoji + ' ' + prize.name;
+        $('result').className='result win'; $('result').textContent = '🎁 УДАЧА! Выпало: ' + prize.emoji + ' ' + prize.name;
       }
-      $('result').className = 'result win';
+      spinning = false;
+      if($('spinBtn')) $('spinBtn').disabled = false; if($('fastSpinBtn')) $('fastSpinBtn').disabled = false;
     } else {
-      $('result').textContent = '😢 НЕУДАЧА! Вы проиграли.';
-      $('result').className = 'result lose';
+      playSound('lose'); vibrate(200);
+      $('result').className='result lose'; $('result').textContent='😢 НЕУДАЧА! Вы проиграли.';
+      spinning = false;
+      if($('spinBtn')) $('spinBtn').disabled = false; if($('fastSpinBtn')) $('fastSpinBtn').disabled = false;
     }
-    spinning = false;
-    if($('spinBtn')) $('spinBtn').disabled = false; if($('fastSpinBtn')) $('fastSpinBtn').disabled = false;
   }, isFast);
+}
+
+// БОНУСЫ
+function startBonus(baseBet, item) {
+  bonusMode = true; bonusStreak = 1; 
+  playSound('win'); vibrate([200, 100, 200]);
+  $('result').className='result bonus'; 
+  $('result').textContent = '🟣 x' + bonusStreak;
+  runPurpleStep(baseBet, item);
+}
+
+function runPurpleStep(baseBet, item) {
+  const win = Math.random() < 0.5;
+  const target = win ? 180 + (Math.random()-.5)*90 : Math.random()*180;
+  
+  if($('hubText')) $('hubText').textContent = '...';
+  
+  spinNeedle(target, async () => {
+    if(win) { 
+      bonusStreak++; 
+      $('result').textContent = '🟣 x' + bonusStreak;
+      setTimeout(() => runPurpleStep(baseBet, item), 800); 
+    } 
+    else { 
+      finishPurple(baseBet, item); 
+    }
+  }, true);
+}
+
+async function finishPurple(baseBet, item) {
+  bonusMode = false;
+  const u = current();
+  const mult = Math.pow(2, bonusStreak - 1);
+  
+  if(u) {
+    if(item.isCoins) {
+      const winAmt = baseBet * mult;
+      u.coins += winAmt; updateBalance(); await addCoins(winAmt);
+      $('result').className='result win'; $('result').textContent = '🟣 БОНУС! Забрано: +' + winAmt + ' 🪙';
+    } else {
+      const targetVal = item.val * mult;
+      let prize = ALL_ITEMS.find(i => i.val >= targetVal) || ALL_ITEMS[ALL_ITEMS.length-1];
+      const old = u.inventory.find(i => i.name === prize.name);
+      if(old) old.count++; else u.inventory.push({ name: prize.name, emoji: prize.emoji, val: prize.val, count: 1 });
+      renderInventorySelect(); renderInventory(); await saveInventory();
+      $('result').className='result win'; $('result').textContent = '🟣 БОНУС! Забрано: ' + prize.emoji + ' ' + prize.name;
+    }
+  }
+  if($('hubText')) $('hubText').className='hub-text';
+  spinning = false;
+  if($('spinBtn')) $('spinBtn').disabled = false; if($('fastSpinBtn')) $('fastSpinBtn').disabled = false;
+}
+
+function startGoldBonus(baseBet, item) {
+  bonusMode = true; 
+  const items = [{mult: 1.5, chance: 50}, {mult: 2, chance: 25}, {mult: 3, chance: 15}, {mult: 5, chance: 9}, {mult: 10, chance: 1}];
+  let r = Math.random() * 100, winner = items[0];
+  for(let i of items) { if (r < i.chance) { winner = i; break; } r -= i.chance; }
+
+  setTimeout(async () => {
+    const u = current();
+    if(u) {
+      if(item.isCoins) {
+        const totalWin = Math.floor(baseBet * winner.mult);
+        u.coins += totalWin; updateBalance(); await addCoins(totalWin);
+        $('result').className='result win'; $('result').textContent=`🟡 ИКС x${winner.mult}! +${totalWin} 🪙`;
+      } else {
+        const targetVal = item.val * winner.mult;
+        let prize = ALL_ITEMS.find(i => i.val >= targetVal) || ALL_ITEMS[ALL_ITEMS.length-1];
+        const old = u.inventory.find(i => i.name === prize.name);
+        if(old) old.count++; else u.inventory.push({ name: prize.name, emoji: prize.emoji, val: prize.val, count: 1 });
+        renderInventorySelect(); renderInventory(); await saveInventory();
+        $('result').className='result win'; $('result').textContent=`🟡 ИКС x${winner.mult}! +${prize.emoji} ${prize.name}`;
+      }
+    }
+    bonusMode = false; spinning = false;
+    if($('spinBtn')) $('spinBtn').disabled = false; if($('fastSpinBtn')) $('fastSpinBtn').disabled = false;
+    drawWheel(getEffectiveChance()); 
+  }, 2000);
 }
 
 // ====== ИНВЕНТАРЬ ======
@@ -364,7 +498,7 @@ async function cashoutMines() {
 if($('minesCashoutBtn')) $('minesCashoutBtn').onclick = cashoutMines;
 
 // ====== КРАШ ======
-let crashActive = false, crashMult = 1, crashTimer = null, crashBet = 0, crashAutoStop = 0;
+let crashActive = false, crashMult = 1, crashTimer = null, crashBet = 0, crashAutoStop = 0, crashHistory = [];
 if($('crashStartBtn')) $('crashStartBtn').onclick = async () => {
   if(crashActive) return;
   const u = current(); if(!u) return;
@@ -377,22 +511,20 @@ if($('crashStartBtn')) $('crashStartBtn').onclick = async () => {
   
   crashActive = true; crashMult = 1;
   $('crashStartBtn').style.display = 'none';
+  $('crashCashoutBtn').style.display = 'block';
+  $('crashCashoutBtn').textContent = `ЗАБРАТЬ (x1.00)`;
   $('crashStatus').textContent = 'Игра началась!'; $('crashStatus').style.color = '#b8d8a8';
   
   const crashPoint = 1 + (Math.random() * Math.random() * 10);
   
   crashTimer = setInterval(async () => {
+    if(!crashActive) return;
     crashMult += 0.02;
     $('crashMultiplier').textContent = `x${crashMult.toFixed(2)}`;
+    $('crashCashoutBtn').textContent = `ЗАБРАТЬ (x${crashMult.toFixed(2)})`;
     
     if(crashMult >= crashAutoStop) {
-      crashActive = false; clearInterval(crashTimer);
-      const winAmt = Math.floor(crashBet * crashAutoStop);
-      u.coins += winAmt; updateBalance(); await addCoins(winAmt);
-      playSound('win'); vibrate([100, 50, 100]);
-      $('crashStatus').textContent = `Авто-стоп! Выигрыш: +${winAmt} 🪙`; $('crashStatus').style.color = '#7ee06b';
-      $('crashStartBtn').style.display = 'block';
-      return;
+      cashoutCrash();
     }
     
     if(crashMult >= crashPoint) {
@@ -401,23 +533,62 @@ if($('crashStartBtn')) $('crashStartBtn').onclick = async () => {
       $('crashStatus').textContent = `КРАШ на x${crashMult.toFixed(2)}! Ставка сгорела.`; $('crashStatus').style.color = '#ff6b4a';
       $('crashMultiplier').style.color = '#ff6b4a';
       $('crashStartBtn').style.display = 'block';
+      $('crashCashoutBtn').style.display = 'none';
+      
+      // Добавляем в историю
+      crashHistory.unshift(crashMult);
+      if(crashHistory.length > 10) crashHistory.pop();
+      renderCrashHistory();
     }
   }, 100);
   $('crashMultiplier').style.color = '#7ee06b';
 };
 
+async function cashoutCrash() {
+    if(!crashActive) return;
+    crashActive = false;
+    clearInterval(crashTimer);
+    
+    const u = current();
+    const winAmt = Math.floor(crashBet * crashMult);
+    u.coins += winAmt; updateBalance(); await addCoins(winAmt);
+    
+    playSound('win'); vibrate([100, 50, 100]);
+    $('crashStatus').textContent = `Вы забрали на x${crashMult.toFixed(2)}! Выигрыш: +${winAmt} 🪙`; 
+    $('crashStatus').style.color = '#7ee06b';
+    $('crashStartBtn').style.display = 'block';
+    $('crashCashoutBtn').style.display = 'none';
+    
+    // Добавляем в историю
+    crashHistory.unshift(crashMult);
+    if(crashHistory.length > 10) crashHistory.pop();
+    renderCrashHistory();
+}
+
+if($('crashCashoutBtn')) $('crashCashoutBtn').onclick = cashoutCrash;
+
+function renderCrashHistory() {
+    const box = $('crashHistory');
+    if(!box) return;
+    box.innerHTML = '';
+    crashHistory.forEach(mult => {
+        let color = mult >= 2 ? '#7ee06b' : '#ff6b4a';
+        box.innerHTML += `<span style="background: #0000004d; color: ${color}; padding: 4px 8px; border-radius: 5px; font-weight: bold; font-size: 12px;">x${mult.toFixed(2)}</span>`;
+    });
+}
+
 // ====== КЕЙСЫ ======
 const CASES=[
-{id:'1',name:'Чикен',price:20,emoji:'🍔',items:[{emoji:'🍞',name:'Хлеб',w:30,val:2,img:'bread.png'},{emoji:'🥬',name:'Салат',w:25,val:5,img:'salat.png'},{emoji:'🍅',name:'Томат',w:18,val:10,img:'tomat.png'},{emoji:'🧅',name:'Лук',w:12,val:15,img:'luk.png'},{emoji:'🐔',name:'Курица',w:10,val:25,img:'chicken.png'},{emoji:'🧀',name:'Сыр',w:4,val:40,img:'cheese.png'},{emoji:'🔫',name:'AK-47',w:1,val:800,img:'ak47.png'}]},
-{id:'2',name:'Чизбургер',price:30,emoji:'🧀',items:[{emoji:'🍞',name:'Хлеб',w:28,val:3,img:'bread.png'},{emoji:'🥬',name:'Салат',w:22,val:8,img:'salat.png'},{emoji:'🍅',name:'Томат',w:18,val:15,img:'tomat.png'},{emoji:'🧀',name:'Сыр',w:15,val:30,img:'cheese.png'},{emoji:'🥩',name:'Мясо',w:10,val:50,img:'meat.png'},{emoji:'🌶️',name:'Перец',w:6,val:70,img:'pepper.png'},{emoji:'🎯',name:'AWP',w:1,val:1500,img:'awp.png'}]},
-{id:'3',name:'Двойной',price:50,emoji:'🍔🍔',items:[{emoji:'🍞',name:'Хлеб',w:25,val:5,img:'bread.png'},{emoji:'🥩',name:'Мясо',w:22,val:15,img:'meat.png'},{emoji:'🧀',name:'Сыр',w:20,val:25,img:'cheese.png'},{emoji:'🥬',name:'Салат',w:15,val:40,img:'salat.png'},{emoji:'🍅',name:'Томат',w:10,val:70,img:'tomat.png'},{emoji:'🥓',name:'Бекон',w:6,val:100,img:'bacon.png'},{emoji:'🗡️',name:'Bayonet',w:2,val:3000,img:'bayonet.png'}]},
-{id:'4',name:'Овощной',price:40,emoji:'🥗',items:[{emoji:'🥬',name:'Салат',w:28,val:4,img:'salat.png'},{emoji:'🍅',name:'Томат',w:25,val:10,img:'tomat.png'},{emoji:'🥒',name:'Огурец',w:20,val:20,img:'cucumber.png'},{emoji:'🧅',name:'Лук',w:12,val:35,img:'luk.png'},{emoji:'🥑',name:'Авокадо',w:9,val:60,img:'avocado.png'},{emoji:'🌶️',name:'Перец',w:5,val:90,img:'pepper.png'},{emoji:'🗡️',name:'Bayonet',w:1,val:3000,img:'bayonet.png'}]},
-{id:'5',name:'Салат',price:35,emoji:'🥬',items:[{emoji:'🥬',name:'Листья',w:32,val:3,img:'salat.png'},{emoji:'🥒',name:'Огурец',w:25,val:10,img:'cucumber.png'},{emoji:'🍅',name:'Томат',w:18,val:22,img:'tomat.png'},{emoji:'🧅',name:'Лук',w:12,val:40,img:'luk.png'},{emoji:'🥑',name:'Авокадо',w:8,val:60,img:'avocado.png'},{emoji:'🥓',name:'Бекон',w:4,val:90,img:'bacon.png'},{emoji:'🔫',name:'AK-47',w:1,val:800,img:'ak47.png'}]},
-{id:'6',name:'Биг Хит',price:80,emoji:'💥',items:[{emoji:'🍞',name:'Хлеб',w:22,val:10,img:'bread.png'},{emoji:'🥩',name:'Мясо',w:20,val:25,img:'meat.png'},{emoji:'🧀',name:'Сыр',w:18,val:50,img:'cheese.png'},{emoji:'🥓',name:'Бекон',w:15,val:80,img:'bacon.png'},{emoji:'🍅',name:'Томат',w:12,val:120,img:'tomat.png'},{emoji:'🌶️',name:'Перец',w:8,val:170,img:'pepper.png'},{emoji:'💎',name:'Алмаз',w:4,val:200,img:'diamond.png'},{emoji:'🎯',name:'AWP',w:1,val:1500,img:'awp.png'}]},
-{id:'7',name:'Дв. Биг',price:120,emoji:'💥💥',items:[{emoji:'🍞',name:'Хлеб',w:20,val:15,img:'bread.png'},{emoji:'🥩',name:'Мясо',w:18,val:40,img:'meat.png'},{emoji:'🧀',name:'Сыр',w:17,val:80,img:'cheese.png'},{emoji:'🥓',name:'Бекон',w:15,val:130,img:'bacon.png'},{emoji:'🍅',name:'Томат',w:12,val:200,img:'tomat.png'},{emoji:'🌶️',name:'Перец',w:9,val:280,img:'pepper.png'},{emoji:'💎',name:'Алмаз',w:6,val:330,img:'diamond.png'},{emoji:'🔫',name:'AK-47',w:3,val:800,img:'ak47.png'}]},
-{id:'8',name:'Мега',price:150,emoji:'🍔',items:[{emoji:'🍞',name:'Хлеб',w:18,val:20,img:'bread.png'},{emoji:'🥩',name:'Мясо',w:17,val:60,img:'meat.png'},{emoji:'🧀',name:'Сыр',w:16,val:120,img:'cheese.png'},{emoji:'🥓',name:'Бекон',w:14,val:200,img:'bacon.png'},{emoji:'🍅',name:'Томат',w:12,val:300,img:'tomat.png'},{emoji:'🌶️',name:'Перец',w:10,val:380,img:'pepper.png'},{emoji:'💎',name:'Алмаз',w:9,val:420,img:'diamond.png'},{emoji:'🦋',name:'Butterfly Knife',w:4,val:6000,img:'butterfly.png'}]},
-{id:'9',name:'Король',price:200,emoji:'👑',items:[{emoji:'🍞',name:'Хлеб',w:16,val:30,img:'bread.png'},{emoji:'🥩',name:'Мясо',w:16,val:100,img:'meat.png'},{emoji:'🧀',name:'Сыр',w:15,val:200,img:'cheese.png'},{emoji:'🥓',name:'Бекон',w:14,val:300,img:'bacon.png'},{emoji:'🍅',name:'Томат',w:13,val:400,img:'tomat.png'},{emoji:'👑',name:'Корона',w:10,val:500,img:'crown.png'},{emoji:'💎',name:'Алмаз',w:12,val:560,img:'diamond.png'},{emoji:'🦋',name:'Butterfly Knife',w:4,val:6000,img:'butterfly.png'}]},
-{id:'10',name:'Легенда',price:300,emoji:'🏆',items:[{emoji:'🍞',name:'Хлеб',w:14,val:50,img:'bread.png'},{emoji:'🥩',name:'Мясо',w:14,val:150,img:'meat.png'},{emoji:'🧀',name:'Сыр',w:13,val:300,img:'cheese.png'},{emoji:'🥓',name:'Бекон',w:13,val:450,img:'bacon.png'},{emoji:'🍅',name:'Томат',w:12,val:600,img:'tomat.png'},{emoji:'👑',name:'Корона',w:12,val:750,img:'crown.png'},{emoji:'💎',name:'Алмаз',w:14,val:850,img:'diamond.png'},{emoji:'🦋',name:'Butterfly Knife',w:8,val:6000,img:'butterfly.png'}]}
+{id:'1',name:'Чикен',price:20,emoji:'🍔',items:[{emoji:'🍞',name:'Хлеб',w:30,val:2},{emoji:'🥬',name:'Салат',w:25,val:5},{emoji:'🍅',name:'Томат',w:18,val:10},{emoji:'🧅',name:'Лук',w:12,val:15},{emoji:'🐔',name:'Курица',w:10,val:25},{emoji:'🧀',name:'Сыр',w:4,val:40},{emoji:'🔫',name:'AK-47',w:1,val:800}]},
+{id:'2',name:'Чизбургер',price:30,emoji:'🧀',items:[{emoji:'🍞',name:'Хлеб',w:28,val:3},{emoji:'🥬',name:'Салат',w:22,val:8},{emoji:'🍅',name:'Томат',w:18,val:15},{emoji:'🧀',name:'Сыр',w:15,val:30},{emoji:'🥩',name:'Мясо',w:10,val:50},{emoji:'🌶️',name:'Перец',w:6,val:70},{emoji:'🎯',name:'AWP',w:1,val:1500}]},
+{id:'3',name:'Двойной',price:50,emoji:'🍔🍔',items:[{emoji:'🍞',name:'Хлеб',w:25,val:5},{emoji:'🥩',name:'Мясо',w:22,val:15},{emoji:'🧀',name:'Сыр',w:20,val:25},{emoji:'🥬',name:'Салат',w:15,val:40},{emoji:'🍅',name:'Томат',w:10,val:70},{emoji:'🥓',name:'Бекон',w:6,val:100},{emoji:'🗡️',name:'Bayonet',w:2,val:3000}]},
+{id:'4',name:'Овощной',price:40,emoji:'🥗',items:[{emoji:'🥬',name:'Салат',w:28,val:4},{emoji:'🍅',name:'Томат',w:25,val:10},{emoji:'🥒',name:'Огурец',w:20,val:20},{emoji:'🧅',name:'Лук',w:12,val:35},{emoji:'🥑',name:'Авокадо',w:9,val:60},{emoji:'🌶️',name:'Перец',w:5,val:90},{emoji:'🗡️',name:'Bayonet',w:1,val:3000}]},
+{id:'5',name:'Салат',price:35,emoji:'🥬',items:[{emoji:'🥬',name:'Листья',w:32,val:3},{emoji:'🥒',name:'Огурец',w:25,val:10},{emoji:'🍅',name:'Томат',w:18,val:22},{emoji:'🧅',name:'Лук',w:12,val:40},{emoji:'🥑',name:'Авокадо',w:8,val:60},{emoji:'🥓',name:'Бекон',w:4,val:90},{emoji:'🔫',name:'AK-47',w:1,val:800}]},
+{id:'6',name:'Биг Хит',price:80,emoji:'💥',items:[{emoji:'🍞',name:'Хлеб',w:22,val:10},{emoji:'🥩',name:'Мясо',w:20,val:25},{emoji:'🧀',name:'Сыр',w:18,val:50},{emoji:'🥓',name:'Бекон',w:15,val:80},{emoji:'🍅',name:'Томат',w:12,val:120},{emoji:'🌶️',name:'Перец',w:8,val:170},{emoji:'💎',name:'Алмаз',w:4,val:200},{emoji:'🎯',name:'AWP',w:1,val:1500}]},
+{id:'7',name:'Дв. Биг',price:120,emoji:'💥💥',items:[{emoji:'🍞',name:'Хлеб',w:20,val:15},{emoji:'🥩',name:'Мясо',w:18,val:40},{emoji:'🧀',name:'Сыр',w:17,val:80},{emoji:'🥓',name:'Бекон',w:15,val:130},{emoji:'🍅',name:'Томат',w:12,val:200},{emoji:'🌶️',name:'Перец',w:9,val:280},{emoji:'💎',name:'Алмаз',w:6,val:330},{emoji:'🔫',name:'AK-47',w:3,val:800}]},
+{id:'8',name:'Мега',price:150,emoji:'🍔',items:[{emoji:'🍞',name:'Хлеб',w:18,val:20},{emoji:'🥩',name:'Мясо',w:17,val:60},{emoji:'🧀',name:'Сыр',w:16,val:120},{emoji:'🥓',name:'Бекон',w:14,val:200},{emoji:'🍅',name:'Томат',w:12,val:300},{emoji:'🌶️',name:'Перец',w:10,val:380},{emoji:'💎',name:'Алмаз',w:9,val:420},{emoji:'🦋',name:'Butterfly Knife',w:4,val:6000}]},
+{id:'9',name:'Король',price:200,emoji:'👑',items:[{emoji:'🍞',name:'Хлеб',w:16,val:30},{emoji:'🥩',name:'Мясо',w:16,val:100},{emoji:'🧀',name:'Сыр',w:15,val:200},{emoji:'🥓',name:'Бекон',w:14,val:300},{emoji:'🍅',name:'Томат',w:13,val:400},{emoji:'👑',name:'Корона',w:10,val:500},{emoji:'💎',name:'Алмаз',w:12,val:560},{emoji:'🦋',name:'Butterfly Knife',w:4,val:6000}]},
+{id:'10',name:'Легенда',price:300,emoji:'🏆',items:[{emoji:'🍞',name:'Хлеб',w:14,val:50},{emoji:'🥩',name:'Мясо',w:14,val:150},{emoji:'🧀',name:'Сыр',w:13,val:300},{emoji:'🥓',name:'Бекон',w:13,val:450},{emoji:'🍅',name:'Томат',w:12,val:600},{emoji:'👑',name:'Корона',w:12,val:750},{emoji:'💎',name:'Алмаз',w:14,val:850},{emoji:'🦋',name:'Butterfly Knife',w:8,val:6000}]}
 ];
 
 let caseBusy = false;
