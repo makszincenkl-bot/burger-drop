@@ -21,25 +21,18 @@ let unsubscribeSnap = null;
 
 function current(){ return currentUser; }
 
-// ==== НАДЕЖНОЕ СОХРАНЕНИЕ ====
-async function saveDB(){ 
+// ==== АТОМАРНОЕ СОХРАНЕНИЕ (СЛОЖЕНИЕ НА СЕРВЕРЕ) ====
+async function addCoins(amount) {
   if(!currentUser) return;
   try {
-    await updateDoc(doc(db, "users", currentUser.uid), { coins: currentUser.coins });
+    await updateDoc(doc(db, "users", currentUser.uid), { coins: increment(amount) });
   } catch(e) {
-    console.error("Ошибка сохранения:", e);
-    let errBox = $('dbErrorBox');
-    if(!errBox) {
-      errBox = document.createElement('div');
-      errBox.id = 'dbErrorBox';
-      errBox.style.cssText = 'background:#ff4a4a; color:#fff; padding:8px; border-radius:8px; margin-bottom:10px; font-size:12px; font-weight:bold;';
-      document.querySelector('.game').prepend(errBox);
-    }
-    errBox.textContent = 'ОШИБКА БАЗЫ: ' + e.message;
+    console.error("Ошибка базы:", e);
+    alert("Ошибка сохранения: " + e.message);
   }
 }
 
-// Звуки
+// Звуки и вибрация
 function playSound(type) {
   try {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -54,7 +47,7 @@ function playSound(type) {
 }
 function vibrate(ms) { if (navigator.vibrate) navigator.vibrate(ms); }
 
-// Фон
+// Анимация фона
 function initBg(){
   const layer = document.getElementById('bgLayer');
   const g1 = document.createElement('div'); g1.className = 'bg-glow g1'; layer.appendChild(g1);
@@ -129,10 +122,11 @@ async function doSpin(isFast){
   spinning=true; const normalBtn = $('spinBtn'), fastBtn = $('fastSpinBtn');
   normalBtn.disabled=true; if(fastBtn) fastBtn.disabled=true;
   
-  u.coins -= bet; 
-  await saveDB(); // Сначала сохраняем списание
-  updateBalance(); resultEl.textContent='';
+  u.coins -= bet; // Списываем локально для отображения
+  updateBalance(); 
+  await addCoins(-bet); // Отправляем списание в базу
   
+  resultEl.textContent='';
   playSound('spin');
   const angle=Math.random()*360, gs=180-chance*1.8, ge=180+chance*1.8;
   const win = (angle>=gs && angle<=ge);
@@ -141,8 +135,8 @@ async function doSpin(isFast){
     if(win){
       const winAmt=Math.floor(bet*100/chance);
       u.coins += winAmt; 
-      await saveDB(); // Сохраняем выигрыш
       updateBalance(); 
+      await addCoins(winAmt); // Отправляем выигрыш в базу
       
       playSound('win'); vibrate([100, 50, 100]);
       resultEl.className='result win'; resultEl.textContent='🍔 УДАЧА! +'+winAmt+' 🪙';
@@ -176,8 +170,8 @@ async function spinCase(c){
   if(u.coins<c.price){$('modalLog').textContent='Мало монет!';return}
   
   u.coins -= c.price; 
-  await saveDB(); // Сохраняем списание
   updateBalance();
+  await addCoins(-c.price); // Отправляем списание в базу
   
   const b=$('modalOpenBtn');b.disabled=true;b.textContent='КРУТИМ...';$('modalContents').style.display='none';$('modalLog').textContent='';
   const winner=pickPrize(c.items),cells=Array.from({length:40},()=>pickPrize(c.items));cells[32]=winner;
@@ -187,8 +181,8 @@ async function spinCase(c){
   
   setTimeout(async ()=>{
     u.coins += winner.val; 
-    await saveDB(); // Сохраняем выигрыш
     updateBalance(); 
+    await addCoins(winner.val); // Отправляем выигрыш в базу
     
     playSound('win');vibrate(100);
     $('modalLog').textContent=`🎁 Выпало: ${winner.emoji} ${winner.name} (+${winner.val} 🪙)`;
@@ -198,8 +192,8 @@ async function spinCase(c){
 
 let clicks=0,perClick=1,autoLevel=0,timer=null;
 function updateClickerUI(){$('perClick').textContent=perClick;$('clickCount').textContent=clicks}
-$('burgerClick').onclick=async ()=>{const u=current();if(!u)return;clicks++;u.coins+=perClick;await saveDB();updateBalance();updateClickerUI();vibrate(20)};
-$('buyAuto').onclick=async ()=>{if(autoLevel>=5)return;const cost=50*(autoLevel+1),u=current();if(u.coins<cost){$('clickerLog').textContent='Мало монет';return}u.coins-=cost;autoLevel++;perClick++;await saveDB();updateBalance();updateClickerUI();if(!timer)timer=setInterval(async ()=>{const cu=current();if(cu){cu.coins+=perClick;await saveDB();updateBalance();updateClickerUI()}},1000)};
+$('burgerClick').onclick=async ()=>{const u=current();if(!u)return;clicks++;u.coins+=perClick;updateBalance();updateClickerUI();vibrate(20);await addCoins(perClick);};
+$('buyAuto').onclick=async ()=>{if(autoLevel>=5)return;const cost=50*(autoLevel+1),u=current();if(u.coins<cost){$('clickerLog').textContent='Мало монет';return}u.coins-=cost;autoLevel++;perClick++;updateBalance();updateClickerUI();await addCoins(-cost);if(!timer)timer=setInterval(async ()=>{const cu=current();if(cu){cu.coins+=perClick;updateBalance();updateClickerUI();await addCoins(perClick);}},1000)};
 
 async function fillAllSelects(){
   const snap = await getDocs(collection(db, "users"));
