@@ -24,22 +24,42 @@ let isCoinMode = true;
 
 function current(){ return currentUser; }
 
-// Сохранение монет
+// Безопасное сохранение монет
 async function addCoins(amount) {
   if(!currentUser) return;
-  try { await updateDoc(doc(db, "users", currentUser.uid), { coins: increment(amount) }); } 
-  catch(e) { console.error("Ошибка базы:", e); }
+  try { 
+    await updateDoc(doc(db, "users", currentUser.uid), { coins: increment(amount) }); 
+  } catch(e) { 
+    console.error("Ошибка монет:", e);
+    showError("Ошибка сохранения монет: " + e.message);
+  }
 }
 
-// НАДЕЖНОЕ сохранение инвентаря (только инвентарь и активный предмет)
+// Безопасное сохранение инвентаря через setDoc (merge)
 async function saveInventory() {
   if(!currentUser) return;
   try { 
-    await updateDoc(doc(db, "users", currentUser.uid), { 
+    await setDoc(doc(db, "users", currentUser.uid), { 
       inventory: currentUser.inventory, 
       activeItem: currentUser.activeItem
-    }); 
-  } catch(e) { console.error("Ошибка сохранения инвентаря:", e); }
+    }, { merge: true }); 
+  } catch(e) { 
+    console.error("Ошибка инвентаря:", e);
+    showError("Ошибка сохранения инвентаря: " + e.message);
+  }
+}
+
+// Вывод ошибки прямо на экран
+function showError(text) {
+  let errBox = document.getElementById('dbErrorBox');
+  if(!errBox) {
+    errBox = document.createElement('div');
+    errBox.id = 'dbErrorBox';
+    errBox.style.cssText = 'position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#ff4a4a;color:#fff;padding:10px;border-radius:8px;font-size:12px;z-index:9999;font-weight:bold;text-align:center;width:90%;max-width:400px;box-shadow:0 5px 15px rgba(0,0,0,0.5);';
+    document.body.appendChild(errBox);
+  }
+  errBox.textContent = text;
+  setTimeout(() => { if(errBox) errBox.remove(); }, 5000);
 }
 
 function playSound(type) {
@@ -86,7 +106,6 @@ if($('showReg')) $('showReg').onclick=()=>{if(authScreen)authScreen.style.displa
 if($('showLogin')) $('showLogin').onclick=showAuth;
 
 if($('loginBtn')) $('loginBtn').onclick=async()=>{ const email=$('loginUser').value.trim(), pass=$('loginPass').value; $('loginErr').textContent='Загрузка...'; try { await signInWithEmailAndPassword(auth, email, pass); } catch(e) { $('loginErr').textContent='Ошибка входа'; } };
-// УБРАЛ isAdmin: true (теперь false по умолчанию)
 if($('regBtn')) $('regBtn').onclick=async()=>{ const email=$('regUser').value.trim(), pass=$('regPass').value; if(pass.length<6){$('regErr').textContent='Пароль минимум 6 символов';return} $('regErr').textContent='Создание...'; try { const cred = await createUserWithEmailAndPassword(auth, email, pass); await setDoc(doc(db, "users", cred.user.uid), { email: email, coins: 100, isAdmin: false, forcedChance: null, inventory: [], activeItem: null }); } catch(e) { $('regErr').textContent='Ошибка: ' + (e.code==='auth/email-already-in-use'?'Email занят':'Проверьте данные'); } };
 if($('logoutBtn')) $('logoutBtn').onclick=()=>signOut(auth);
 
@@ -750,7 +769,6 @@ async function spinCase(c){
   const old = u.inventory.find(i => i.name === winner.name);
   if(old) old.count += 1; else u.inventory.push({ name: winner.name, emoji: winner.emoji, val: winner.val, count: 1, color: winner.color });
   
-  // Сохраняем только инвентарь (не трогаем баланс, чтобы не было конфликтов)
   await saveInventory(); 
   
   renderInventory(); 
