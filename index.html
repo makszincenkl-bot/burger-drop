@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Burger Drop 🍔</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="bg-layer" id="bgLayer"></div>
+<div class="game">
+ <div class="logo"><div class="logo-icon">🍔</div><div class="logo-text"><div class="top">Burger Drop</div><div class="sub">Spin • Win • Burger</div></div></div>
+ <div id="authScreen" class="auth"><h2>Вход</h2><input type="text" id="loginUser" placeholder="Логин"><input type="password" id="loginPass" placeholder="Пароль"><div class="err" id="loginErr"></div><button id="loginBtn">ВОЙТИ</button><button class="link-btn" id="showReg">Нет аккаунта? Регистрация</button></div>
+ <div id="regScreen" class="auth" style="display:none"><h2>Регистрация</h2><input type="text" id="regUser" placeholder="Логин"><input type="password" id="regPass" placeholder="Пароль"><div class="err" id="regErr"></div><button id="regBtn">СОЗДАТЬ</button><button class="link-btn" id="showLogin">Назад ко входу</button></div>
+ <div id="gameScreen" style="display:none">
+  <div class="userbar"><span>👤 <span id="userName">—</span></span><button id="logoutBtn">Выйти</button></div>
+  <div class="balance"><span class="label">Баланс</span><span class="coins-val"><span id="balance">100</span><span id="globalCurrency">🪙</span></span></div>
+  <div class="tabs"><button class="tab active" data-panel="game">🎡 Игра</button><button class="tab" data-panel="cases">🎁 Кейсы</button><button class="tab" data-panel="inventory">🎒 Инвентарь</button><button class="tab" data-panel="clicker">👆 Кликер</button><button class="tab" data-panel="admin" id="adminTab" style="display:none">🛡 Админ</button></div>
+  <div class="panel active" id="panel-game">
+   <div class="wheel-wrap"><div class="wheel" id="wheel"></div><div class="hub-text" id="hubText">50%</div><div class="needle-spinner" id="needle"><div class="needle-arm"></div></div></div>
+   <div class="row"><div><label>Ставка</label><div class="bet-input-wrap"><input type="number" id="bet" value="10" min="1"><span class="bet-icon" id="betIcon">🪙</span></div></div><div><label>Шанс (%)</label><input type="number" id="chance" value="50" min="0.1" max="99" step="0.1"></div></div>
+   <div class="preview"><div>Множитель: <span class="mult" id="multPreview">x2.00</span></div><div>Выигрыш: <span class="win-amt" id="winPreview">+20</span> <span id="winCurrency">🪙</span></div></div>
+   <button id="spinBtn">КРУТИТЬ 🎡</button><div class="result" id="result"></div>
+  </div>
+  <div class="panel" id="panel-cases"><div class="section-title">Выбери кейс</div><div class="case-grid" id="caseGrid"></div><div class="log" id="caseLog"></div></div>
+  <div class="panel" id="panel-inventory"><div class="section-title">🎒 Инвентарь</div><div class="muted">Нажми «Поставить», чтобы делать ставку предметом. При выигрыше выпадет другой предмет (по цене/весу), при проигрыше — предмет сгорит.</div><div id="inventoryList"></div><div class="log" id="invLog"></div></div>
+  <div class="panel" id="panel-clicker"><div class="section-title">Кликер</div><div class="burger-click" id="burgerClick">🍔</div><div class="clicker-stats"><div>За клик: <b id="perClick">1</b></div><div>Кликов: <b id="clickCount">0</b></div></div><button id="buyAuto">Купить автокликер (50 🪙)</button><div class="log" id="clickerLog"></div></div>
+  <div class="panel" id="panel-admin"><div class="section-title">🛡 Админ-панель</div><div class="case-block"><div style="font-size:13px;font-weight:700;margin-bottom:8px">💰 Выдать монеты</div><div class="admin-field"><label>Игрок (логин)</label><input type="text" id="adminTarget" placeholder="player"></div><div class="admin-row"><input type="number" id="adminCoins" value="100" min="1"><button class="small" id="adminGiveBtn">ВЫДАТЬ</button></div><div class="log" id="adminGiveLog"></div></div><div class="case-block"><div style="font-size:13px;font-weight:700;margin-bottom:8px">🎯 Шансы</div><div class="admin-field"><label>Игрок</label><select id="adminChanceTarget"></select></div><div class="admin-field"><label>Принудительный шанс (%)</label><input type="number" id="adminChanceValue" value="50" min="0.1" max="99" step="0.1"></div><div class="admin-row"><button class="small" id="adminChanceBtn">ОК</button><button class="small" id="adminChanceResetBtn" style="background:#ff646466;color:#fff">СБРОС</button></div><div class="log" id="adminChanceLog"></div></div><div class="case-block"><div style="font-size:13px;font-weight:700;margin-bottom:8px">👤 Создать</div><div class="admin-row"><input type="text" id="adminNewUser" placeholder="логин"><input type="password" id="adminNewPass" placeholder="пароль"></div><button class="small" id="adminCreateBtn">СОЗДАТЬ</button><div class="log" id="adminCreateLog"></div></div></div>
+ </div>
+</div>
+<div class="modal-overlay" id="caseModal"><div class="modal"><div class="close-modal" onclick="closeModal()">×</div><div class="modal-head" id="modalTitle">Название</div><div class="modal-contents" id="modalContents"></div><div id="modalRouletteWrap"></div><button id="modalOpenBtn" class="small">ОТКРЫТЬ</button><div class="log" id="modalLog"></div></div></div>
+<script src="script.js"></script>
+</body>
+</html>
