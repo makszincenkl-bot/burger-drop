@@ -39,7 +39,29 @@
     <button class="tab" data-panel="admin" id="adminTab" style="display:none">🛡 Админ</button>
   </div>
   
-  <div class="panel active" id="panel-game">
+  <div class="panel" id="panel-admin">
+    <div class="section-title">🛡 Админ-панель</div>
+    <div class="case-block">
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px">💰 Выдать монеты</div>
+      <div class="admin-field"><label>Email игрока</label><input type="text" id="adminTarget" placeholder="player@test.com"></div>
+      <div class="admin-row"><input type="number" id="adminCoins" value="1000" min="1"><button class="small" id="adminGiveBtn">ВЫДАТЬ</button></div>
+      <div class="log" id="adminGiveLog"></div>
+    </div>
+    <div class="case-block">
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px">🎯 Шансы</div>
+      <div class="admin-field"><label>Игрок</label><select id="adminChanceTarget"></select></div>
+      <div class="admin-field"><label>Шанс (%)</label><input type="number" id="adminChanceValue" value="99" min="0.1" max="99" step="0.1"></div>
+      <div class="admin-row"><button class="small" id="adminChanceBtn">ОК</button><button class="small btn-danger" id="adminChanceResetBtn">СБРОС</button></div>
+      <div class="log" id="adminChanceLog"></div>
+    </div>
+    <div class="case-block">
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px">💀 Приколы</div>
+      <div class="admin-field"><label>Игрок</label><select id="adminTrollTarget"></select></div>
+      <div class="admin-row"><button class="small btn-gold" id="adminGodBtn">БОГ</button><button class="small btn-danger" id="adminZeroBtn">ОБНУЛИТЬ</button></div>
+      <div class="admin-row"><button class="small btn-purple" id="adminJackpotBtn">ДЖЕКПОТ</button><button class="small" id="adminClearInvBtn">ОЧИСТИТЬ ИНВЕНТАРЬ</button></div>
+      <div class="log" id="adminTrollLog"></div>
+    </div>
+  </div>
    <div class="wheel-wrap"><div class="wheel" id="wheel"></div><div class="hub-text" id="hubText">50%</div><div class="needle-spinner" id="needle"><div class="needle-arm"></div></div></div>
    <div class="row"><div><label>Ставка</label><input type="number" id="bet" value="10" min="1"></div><div><label>Шанс (%)</label><input type="number" id="chance" value="50" min="0.1" max="99" step="0.1"></div></div>
    <div class="preview"><div>Множитель: <span class="mult" id="multPreview">x2.00</span></div><div>Выигрыш: <span class="win-amt" id="winPreview">+20</span> 🪙</div></div>
