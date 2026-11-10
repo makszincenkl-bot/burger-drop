@@ -631,75 +631,75 @@ function renderCrashHistory() {
     });
 }
 
-// ====== КЕЙСЫ (С ВОЗВРАЩЕННЫМИ ШАНСАМИ) ======
+// ====== КЕЙСЫ (С ПОВЫШЕННЫМИ ШАНСАМИ) ======
 const CASES = [
   { id: '1', name: 'Начальный', price: 50, emoji: '🔫', 
     items: [
-      { name: 'P250 | Sand Dune', emoji: '🔫', w: 40, val: 5, color: '#4b69ff' },
+      { name: 'P250 | Sand Dune', emoji: '🔫', w: 35, val: 5, color: '#4b69ff' },
       { name: 'MP9 | Storm', emoji: '🔫', w: 30, val: 10, color: '#4b69ff' },
       { name: 'Nova | Predator', emoji: '🔫', w: 20, val: 15, color: '#4b69ff' },
-      { name: 'SG 553 | Waves', emoji: '🔫', w: 8, val: 25, color: '#4b69ff' },
-      { name: 'MAC-10 | Candy Apple', emoji: '🔫', w: 2, val: 40, color: '#8847ff' }
+      { name: 'SG 553 | Waves', emoji: '🔫', w: 12, val: 25, color: '#4b69ff' },
+      { name: 'MAC-10 | Candy Apple', emoji: '🔫', w: 3, val: 40, color: '#8847ff' }
     ]
   },
   { id: '2', name: 'Синий', price: 100, emoji: '🔵', 
     items: [
-      { name: 'MP9 | Storm', emoji: '🔫', w: 35, val: 10, color: '#4b69ff' },
+      { name: 'MP9 | Storm', emoji: '🔫', w: 30, val: 10, color: '#4b69ff' },
       { name: 'Nova | Predator', emoji: '🔫', w: 30, val: 15, color: '#4b69ff' },
-      { name: 'SG 553 | Waves', emoji: '🔫', w: 20, val: 25, color: '#4b69ff' },
-      { name: 'MAC-10 | Candy Apple', emoji: '🔫', w: 10, val: 40, color: '#8847ff' },
-      { name: 'AK-47 | Safari Mesh', emoji: '🔫', w: 4, val: 60, color: '#8847ff' },
+      { name: 'SG 553 | Waves', emoji: '🔫', w: 22, val: 25, color: '#4b69ff' },
+      { name: 'MAC-10 | Candy Apple', emoji: '🔫', w: 12, val: 40, color: '#8847ff' },
+      { name: 'AK-47 | Safari Mesh', emoji: '🔫', w: 5, val: 60, color: '#8847ff' },
       { name: 'AWP | Pit Viper', emoji: '🎯', w: 1, val: 100, color: '#8847ff' }
     ]
   },
   { id: '3', name: 'Фиолетовый', price: 200, emoji: '🟣', 
     items: [
-      { name: 'SG 553 | Waves', emoji: '🔫', w: 40, val: 25, color: '#4b69ff' },
+      { name: 'SG 553 | Waves', emoji: '🔫', w: 35, val: 25, color: '#4b69ff' },
       { name: 'MAC-10 | Candy Apple', emoji: '🔫', w: 30, val: 40, color: '#8847ff' },
-      { name: 'AK-47 | Safari Mesh', emoji: '🔫', w: 20, val: 60, color: '#8847ff' },
-      { name: 'AWP | Pit Viper', emoji: '🎯', w: 7, val: 100, color: '#8847ff' },
-      { name: 'M4A1-S | Basilisk', emoji: '🔫', w: 2.5, val: 150, color: '#d32ce6' },
+      { name: 'AK-47 | Safari Mesh', emoji: '🔫', w: 22, val: 60, color: '#8847ff' },
+      { name: 'AWP | Pit Viper', emoji: '🎯', w: 9, val: 100, color: '#8847ff' },
+      { name: 'M4A1-S | Basilisk', emoji: '🔫', w: 3.5, val: 150, color: '#d32ce6' },
       { name: 'USP-S | Cortex', emoji: '🔫', w: 0.5, val: 250, color: '#d32ce6' }
     ]
   },
   { id: '4', name: 'Розовый', price: 350, emoji: '🌸', 
     items: [
-      { name: 'AK-47 | Safari Mesh', emoji: '🔫', w: 40, val: 60, color: '#8847ff' },
+      { name: 'AK-47 | Safari Mesh', emoji: '🔫', w: 35, val: 60, color: '#8847ff' },
       { name: 'AWP | Pit Viper', emoji: '🎯', w: 30, val: 100, color: '#8847ff' },
-      { name: 'M4A1-S | Basilisk', emoji: '🔫', w: 15, val: 150, color: '#d32ce6' },
-      { name: 'USP-S | Cortex', emoji: '🔫', w: 10, val: 250, color: '#d32ce6' },
+      { name: 'M4A1-S | Basilisk', emoji: '🔫', w: 18, val: 150, color: '#d32ce6' },
+      { name: 'USP-S | Cortex', emoji: '🔫', w: 12, val: 250, color: '#d32ce6' },
       { name: 'Desert Eagle | Printstream', emoji: '🔫', w: 4, val: 400, color: '#eb4b4b' },
       { name: 'AK-47 | Redline', emoji: '🔫', w: 1, val: 600, color: '#eb4b4b' }
     ]
   },
   { id: '5', name: 'Красный', price: 500, emoji: '🔴', 
     items: [
-      { name: 'M4A1-S | Basilisk', emoji: '🔫', w: 40, val: 150, color: '#d32ce6' },
-      { name: 'USP-S | Cortex', emoji: '🔫', w: 25, val: 250, color: '#d32ce6' },
+      { name: 'M4A1-S | Basilisk', emoji: '🔫', w: 35, val: 150, color: '#d32ce6' },
+      { name: 'USP-S | Cortex', emoji: '🔫', w: 28, val: 250, color: '#d32ce6' },
       { name: 'Desert Eagle | Printstream', emoji: '🔫', w: 20, val: 400, color: '#eb4b4b' },
-      { name: 'AK-47 | Redline', emoji: '🔫', w: 10, val: 600, color: '#eb4b4b' },
+      { name: 'AK-47 | Redline', emoji: '🔫', w: 12, val: 600, color: '#eb4b4b' },
       { name: 'AWP | Asiimov', emoji: '🎯', w: 4, val: 1000, color: '#eb4b4b' },
       { name: 'AK-47 | Fire Serpent', emoji: '🔫', w: 1, val: 2000, color: '#eb4b4b' }
     ]
   },
   { id: '6', name: 'Ножевой', price: 1000, emoji: '🔪', 
     items: [
-      { name: 'AK-47 | Redline', emoji: '🔫', w: 45, val: 600, color: '#eb4b4b' },
+      { name: 'AK-47 | Redline', emoji: '🔫', w: 40, val: 600, color: '#eb4b4b' },
       { name: 'AWP | Asiimov', emoji: '🎯', w: 30, val: 1000, color: '#eb4b4b' },
-      { name: 'AK-47 | Fire Serpent', emoji: '🔫', w: 15, val: 2000, color: '#eb4b4b' },
-      { name: 'Bayonet | Doppler', emoji: '🗡️', w: 7, val: 3500, color: '#ffcc00' },
-      { name: 'Flip Knife | Fade', emoji: '🔪', w: 2.5, val: 4500, color: '#ffcc00' },
-      { name: 'Stiletto Knife | Marble Fade', emoji: '⚔️', w: 0.5, val: 6000, color: '#ffcc00' }
+      { name: 'AK-47 | Fire Serpent', emoji: '🔫', w: 18, val: 2000, color: '#eb4b4b' },
+      { name: 'Bayonet | Doppler', emoji: '🗡️', w: 8, val: 3500, color: '#ffcc00' },
+      { name: 'Flip Knife | Fade', emoji: '🔪', w: 3, val: 4500, color: '#ffcc00' },
+      { name: 'Stiletto Knife | Marble Fade', emoji: '⚔️', w: 1, val: 6000, color: '#ffcc00' }
     ]
   },
   { id: '7', name: 'Топ', price: 2000, emoji: '💎', 
     items: [
-      { name: 'AWP | Asiimov', emoji: '🎯', w: 50, val: 1000, color: '#eb4b4b' },
+      { name: 'AWP | Asiimov', emoji: '🎯', w: 45, val: 1000, color: '#eb4b4b' },
       { name: 'AK-47 | Fire Serpent', emoji: '🔫', w: 25, val: 2000, color: '#eb4b4b' },
       { name: 'Bayonet | Doppler', emoji: '🗡️', w: 15, val: 3500, color: '#ffcc00' },
-      { name: 'Flip Knife | Fade', emoji: '🔪', w: 7, val: 4500, color: '#ffcc00' },
-      { name: 'Stiletto Knife | Marble Fade', emoji: '⚔️', w: 2.5, val: 6000, color: '#ffcc00' },
-      { name: 'Butterfly Knife | Emerald', emoji: '🦋', w: 0.5, val: 12000, color: '#ffcc00' }
+      { name: 'Flip Knife | Fade', emoji: '🔪', w: 8, val: 4500, color: '#ffcc00' },
+      { name: 'Stiletto Knife | Marble Fade', emoji: '⚔️', w: 5, val: 6000, color: '#ffcc00' },
+      { name: 'Butterfly Knife | Emerald', emoji: '🦋', w: 2, val: 12000, color: '#ffcc00' }
     ]
   }
 ];
