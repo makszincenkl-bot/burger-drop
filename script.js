@@ -24,17 +24,18 @@ let isCoinMode = true;
 
 function current(){ return currentUser; }
 
+// Сохранение монет
 async function addCoins(amount) {
   if(!currentUser) return;
   try { await updateDoc(doc(db, "users", currentUser.uid), { coins: increment(amount) }); } 
   catch(e) { console.error("Ошибка базы:", e); }
 }
 
+// НАДЕЖНОЕ сохранение инвентаря (только инвентарь и активный предмет)
 async function saveInventory() {
   if(!currentUser) return;
   try { 
     await updateDoc(doc(db, "users", currentUser.uid), { 
-      coins: currentUser.coins, 
       inventory: currentUser.inventory, 
       activeItem: currentUser.activeItem
     }); 
@@ -85,7 +86,8 @@ if($('showReg')) $('showReg').onclick=()=>{if(authScreen)authScreen.style.displa
 if($('showLogin')) $('showLogin').onclick=showAuth;
 
 if($('loginBtn')) $('loginBtn').onclick=async()=>{ const email=$('loginUser').value.trim(), pass=$('loginPass').value; $('loginErr').textContent='Загрузка...'; try { await signInWithEmailAndPassword(auth, email, pass); } catch(e) { $('loginErr').textContent='Ошибка входа'; } };
-if($('regBtn')) $('regBtn').onclick=async()=>{ const email=$('regUser').value.trim(), pass=$('regPass').value; if(pass.length<6){$('regErr').textContent='Пароль минимум 6 символов';return} $('regErr').textContent='Создание...'; try { const cred = await createUserWithEmailAndPassword(auth, email, pass); await setDoc(doc(db, "users", cred.user.uid), { email: email, coins: 100, isAdmin: true, forcedChance: null, inventory: [], activeItem: null }); } catch(e) { $('regErr').textContent='Ошибка: ' + (e.code==='auth/email-already-in-use'?'Email занят':'Проверьте данные'); } };
+// УБРАЛ isAdmin: true (теперь false по умолчанию)
+if($('regBtn')) $('regBtn').onclick=async()=>{ const email=$('regUser').value.trim(), pass=$('regPass').value; if(pass.length<6){$('regErr').textContent='Пароль минимум 6 символов';return} $('regErr').textContent='Создание...'; try { const cred = await createUserWithEmailAndPassword(auth, email, pass); await setDoc(doc(db, "users", cred.user.uid), { email: email, coins: 100, isAdmin: false, forcedChance: null, inventory: [], activeItem: null }); } catch(e) { $('regErr').textContent='Ошибка: ' + (e.code==='auth/email-already-in-use'?'Email занят':'Проверьте данные'); } };
 if($('logoutBtn')) $('logoutBtn').onclick=()=>signOut(auth);
 
 onAuthStateChanged(auth, (user) => {
@@ -120,7 +122,7 @@ function enterGame(){
 
 document.querySelectorAll('.tab[data-panel]').forEach(t=>t.addEventListener('click',()=>{document.querySelectorAll('.tab[data-panel]').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');$('panel-'+t.dataset.panel).classList.add('active');}));
 
-// ====== СПИСОК ПРЕДМЕТОВ (ЦЕНЫ УВЕЛИЧЕНЫ) ======
+// ====== СПИСОК ПРЕДМЕТОВ ======
 const ALL_ITEMS = [
   { name: 'P250 | Sand Dune', emoji: '🔫', val: 10, color: '#4b69ff' }, 
   { name: 'MP9 | Storm', emoji: '🔫', val: 20, color: '#4b69ff' }, 
@@ -143,7 +145,6 @@ const ALL_ITEMS = [
   { name: 'Butterfly Knife | Emerald', emoji: '🦋', val: 25000, color: '#ffcc00' }
 ];
 
-// ====== ПЕРЕКЛЮЧАТЕЛЬ РЕЖИМА АПГРЕЙДЕРА ======
 if($('btnModeCoins')) $('btnModeCoins').onclick = () => {
     isCoinMode = true;
     $('btnModeCoins').classList.add('active');
@@ -634,7 +635,7 @@ function renderCrashHistory() {
     });
 }
 
-// ====== КЕЙСЫ (ОБНОВЛЕННЫЕ ЦЕНЫ И НОВЫЕ ПУШКИ) ======
+// ====== КЕЙСЫ ======
 const CASES = [
   { id: '1', name: 'Начальный', price: 50, emoji: '🔫', 
     items: [
@@ -745,11 +746,14 @@ async function spinCase(c){
   
   const winner=pickPrize(c.items);
   
-  // --- СРАЗУ ЗАПИСЫВАЕМ В ИНВЕНТАРЬ И БАЗУ ---
+  // СРАЗУ ЗАПИСЫВАЕМ В ИНВЕНТАРЬ И БАЗУ
   const old = u.inventory.find(i => i.name === winner.name);
   if(old) old.count += 1; else u.inventory.push({ name: winner.name, emoji: winner.emoji, val: winner.val, count: 1, color: winner.color });
-  await saveInventory(); // Сохраняем СРАЗУ
-  renderInventory(); // Обновляем UI
+  
+  // Сохраняем только инвентарь (не трогаем баланс, чтобы не было конфликтов)
+  await saveInventory(); 
+  
+  renderInventory(); 
   renderInventorySelect();
   
   const cells=Array.from({length:40},()=>pickPrize(c.items)); cells[32]=winner;
