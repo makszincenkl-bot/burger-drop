@@ -20,22 +20,26 @@ let currentUser = null;
 let unsubscribeSnap = null;
 let unsubscribeTickets = null;
 let unsubscribeAdminTickets = null;
-let isCoinMode = true;
 
 function current(){ return currentUser; }
 
-// Безопасное сохранение монет
+window.onerror = function(msg) {
+  let err = document.getElementById('globalErr');
+  if(!err) {
+    err = document.createElement('div');
+    err.id = 'globalErr';
+    err.style.cssText = 'position:fixed;top:0;left:0;width:100%;background:#ff4a4a;color:#fff;padding:10px;font-size:12px;z-index:99999;text-align:center;font-weight:bold;';
+    document.body.appendChild(err);
+  }
+  err.innerText = "ОШИБКА: " + msg;
+};
+
 async function addCoins(amount) {
   if(!currentUser) return;
-  try { 
-    await updateDoc(doc(db, "users", currentUser.uid), { coins: increment(amount) }); 
-  } catch(e) { 
-    console.error("Ошибка монет:", e);
-    showError("Ошибка сохранения монет: " + e.message);
-  }
+  try { await updateDoc(doc(db, "users", currentUser.uid), { coins: increment(amount) }); } 
+  catch(e) { console.error("Ошибка базы:", e); }
 }
 
-// Безопасное сохранение инвентаря через setDoc (merge)
 async function saveInventory() {
   if(!currentUser) return;
   try { 
@@ -43,23 +47,7 @@ async function saveInventory() {
       inventory: currentUser.inventory, 
       activeItem: currentUser.activeItem
     }, { merge: true }); 
-  } catch(e) { 
-    console.error("Ошибка инвентаря:", e);
-    showError("Ошибка сохранения инвентаря: " + e.message);
-  }
-}
-
-// Вывод ошибки прямо на экран
-function showError(text) {
-  let errBox = document.getElementById('dbErrorBox');
-  if(!errBox) {
-    errBox = document.createElement('div');
-    errBox.id = 'dbErrorBox';
-    errBox.style.cssText = 'position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#ff4a4a;color:#fff;padding:10px;border-radius:8px;font-size:12px;z-index:9999;font-weight:bold;text-align:center;width:90%;max-width:400px;box-shadow:0 5px 15px rgba(0,0,0,0.5);';
-    document.body.appendChild(errBox);
-  }
-  errBox.textContent = text;
-  setTimeout(() => { if(errBox) errBox.remove(); }, 5000);
+  } catch(e) { console.error("Ошибка сохранения инвентаря:", e); }
 }
 
 function playSound(type) {
@@ -141,7 +129,7 @@ function enterGame(){
 
 document.querySelectorAll('.tab[data-panel]').forEach(t=>t.addEventListener('click',()=>{document.querySelectorAll('.tab[data-panel]').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');$('panel-'+t.dataset.panel).classList.add('active');}));
 
-// ====== СПИСОК ПРЕДМЕТОВ ======
+// ====== ЕДИНЫЙ СПИСОК ПРЕДМЕТОВ ======
 const ALL_ITEMS = [
   { name: 'P250 | Sand Dune', emoji: '🔫', val: 10, color: '#4b69ff' }, 
   { name: 'MP9 | Storm', emoji: '🔫', val: 20, color: '#4b69ff' }, 
@@ -163,25 +151,6 @@ const ALL_ITEMS = [
   { name: 'Stiletto Knife | Marble Fade', emoji: '⚔️', val: 15000, color: '#ffcc00' }, 
   { name: 'Butterfly Knife | Emerald', emoji: '🦋', val: 25000, color: '#ffcc00' }
 ];
-
-if($('btnModeCoins')) $('btnModeCoins').onclick = () => {
-    isCoinMode = true;
-    $('btnModeCoins').classList.add('active');
-    $('btnModeItems').classList.remove('active');
-    $('rowCoins').style.display = 'flex';
-    $('rowItems').style.display = 'none';
-    updateUpgraderPreview();
-};
-
-if($('btnModeItems')) $('btnModeItems').onclick = () => {
-    isCoinMode = false;
-    $('btnModeItems').classList.add('active');
-    $('btnModeCoins').classList.remove('active');
-    $('rowItems').style.display = 'flex';
-    $('rowCoins').style.display = 'none';
-    renderInventorySelect();
-    updateUpgraderPreview();
-};
 
 function renderInventorySelect() {
   const sel = $('upgradeItemSelect'); if(!sel) return;
@@ -205,7 +174,6 @@ function renderInventorySelect() {
 if($('upgradeItemSelect')) $('upgradeItemSelect').onchange = () => { updateUpgraderPreview(); };
 
 function getSelectedItem() {
-  if(isCoinMode) return { name: 'Монеты', emoji: '🪙', isCoins: true };
   const val = $('upgradeItemSelect').value;
   const u = current();
   return u.inventory.find(i => i.name === val);
@@ -221,8 +189,7 @@ function drawWheel(chance){
 }
 
 function getVisualChance() {
-    if(isCoinMode) return Math.min(99,Math.max(.1,parseFloat($('chance').value)||50));
-    return Math.min(99,Math.max(.1,parseFloat($('chanceItem').value)||50));
+    return Math.min(99,Math.max(.1,parseFloat($('chance').value)||50));
 }
 
 function getRealChance() {
@@ -238,19 +205,16 @@ function updateUpgraderPreview() {
   let bet = 0;
   
   if(item) {
-      if(item.isCoins) bet = parseFloat($('upgradeBet').value) || 0;
-      else bet = item.val;
+      bet = item.val;
   }
   
   if($('multPreview')) $('multPreview').textContent = 'x' + (mult >= 100 ? mult.toFixed(0) : mult.toFixed(2));
-  if($('winPreview')) $('winPreview').textContent = '+' + Math.floor(bet * mult) + (item && item.isCoins ? ' 🪙' : ' (Предмет)');
+  if($('winPreview')) $('winPreview').textContent = '+' + Math.floor(bet * mult) + ' (Предмет)';
   
   drawWheel(chance);
 }
 
 if($('chance')) $('chance').addEventListener('input', updateUpgraderPreview);
-if($('chanceItem')) $('chanceItem').addEventListener('input', updateUpgraderPreview);
-if($('upgradeBet')) $('upgradeBet').addEventListener('input', updateUpgraderPreview);
 
 let currentRotation = 0, spinning = false, bonusMode = false, bonusStreak = 0, purpleActive = false, goldActive = false;
 
@@ -268,13 +232,7 @@ async function doUpgrade(isFast){
   const item = getSelectedItem();
   if(!item) { if($('result')) { $('result').textContent = 'Выберите предмет!'; $('result').className = 'result lose'; } return; }
   
-  let betAmount = 0;
-  if(item.isCoins) {
-      betAmount = parseFloat($('upgradeBet').value) || 0;
-      if(betAmount < 1 || u.coins < betAmount) { if($('result')) { $('result').textContent = 'Недостаточно монет!'; $('result').className = 'result lose'; } return; }
-  } else {
-      betAmount = item.val;
-  }
+  let betAmount = item.val;
 
   const visualChance = getVisualChance();
   const realChance = getRealChance();
@@ -283,15 +241,11 @@ async function doUpgrade(isFast){
   spinning = true;
   if($('spinBtn')) $('spinBtn').disabled = true; if($('fastSpinBtn')) $('fastSpinBtn').disabled = true;
 
-  if(item.isCoins) {
-      u.coins -= betAmount; updateBalance(); await addCoins(-betAmount);
-  } else {
-      const idx = u.inventory.findIndex(i => i.name === item.name);
-      if(idx !== -1) {
-          u.inventory[idx].count--;
-          if(u.inventory[idx].count <= 0) u.inventory.splice(idx, 1);
-          renderInventorySelect(); renderInventory(); await saveInventory();
-      }
+  const idx = u.inventory.findIndex(i => i.name === item.name);
+  if(idx !== -1) {
+      u.inventory[idx].count--;
+      if(u.inventory[idx].count <= 0) u.inventory.splice(idx, 1);
+      renderInventorySelect(); renderInventory(); await saveInventory();
   }
 
   if($('result')) $('result').textContent = '';
@@ -329,11 +283,6 @@ async function doUpgrade(isFast){
         startGoldBonus(betAmount, item, mult); 
     } 
     else if(outcome==='win'){
-      if(item.isCoins) {
-        const winAmt = Math.floor(betAmount * mult);
-        u.coins += winAmt; updateBalance(); await addCoins(winAmt);
-        $('result').className='result win'; $('result').textContent='🍔 УДАЧА! +' + winAmt + ' 🪙';
-      } else {
         const targetVal = item.val * mult;
         let prize = ALL_ITEMS.find(i => i.val >= targetVal) || ALL_ITEMS[ALL_ITEMS.length-1];
         const old = u.inventory.find(i => i.name === prize.name);
@@ -341,7 +290,6 @@ async function doUpgrade(isFast){
         
         renderInventorySelect(); renderInventory(); await saveInventory();
         $('result').className='result win'; $('result').textContent = '🎁 УДАЧА! Выпало: ' + prize.emoji + ' ' + prize.name;
-      }
       spinning = false;
       if($('spinBtn')) $('spinBtn').disabled = false; if($('fastSpinBtn')) $('fastSpinBtn').disabled = false;
     } else {
@@ -389,18 +337,12 @@ async function finishPurple(baseBet, item, mult) {
   const bonusMult = Math.pow(2, bonusStreak - 1);
   
   if(u) {
-    if(item.isCoins) {
-      const winAmt = baseBet * bonusMult;
-      u.coins += winAmt; updateBalance(); await addCoins(winAmt);
-      $('result').className='result win'; $('result').textContent = '🟣 БОНУС! Забрано: +' + winAmt + ' 🪙';
-    } else {
       const targetVal = item.val * bonusMult;
       let prize = ALL_ITEMS.find(i => i.val >= targetVal) || ALL_ITEMS[ALL_ITEMS.length-1];
       const old = u.inventory.find(i => i.name === prize.name);
       if(old) old.count++; else u.inventory.push({ name: prize.name, emoji: prize.emoji, val: prize.val, count: 1, color: prize.color });
       renderInventorySelect(); renderInventory(); await saveInventory();
       $('result').className='result win'; $('result').textContent = '🟣 БОНУС! Забрано: ' + prize.emoji + ' ' + prize.name;
-    }
   }
   if($('hubText')) $('hubText').className='hub-text';
   spinning = false;
@@ -427,18 +369,12 @@ function startGoldBonus(baseBet, item, mult) {
   setTimeout(async () => {
     const u = current();
     if(u) {
-      if(item.isCoins) {
-        const totalWin = Math.floor(baseBet * winner.mult);
-        u.coins += totalWin; updateBalance(); await addCoins(totalWin);
-        $('result').className='result win'; $('result').textContent=`🟡 ИКС x${winner.mult}! +${totalWin} 🪙`;
-      } else {
         const targetVal = item.val * winner.mult;
         let prize = ALL_ITEMS.find(i => i.val >= targetVal) || ALL_ITEMS[ALL_ITEMS.length-1];
         const old = u.inventory.find(i => i.name === prize.name);
         if(old) old.count++; else u.inventory.push({ name: prize.name, emoji: prize.emoji, val: prize.val, count: 1, color: prize.color });
         renderInventorySelect(); renderInventory(); await saveInventory();
         $('result').className='result win'; $('result').textContent=`🟡 ИКС x${winner.mult}! +${prize.emoji} ${prize.name}`;
-      }
     }
     b.textContent='ЗАБРАТЬ'; b.disabled=false; b.onclick=()=>{
        $('caseModal').classList.remove('active'); bonusMode=false; spinning=false;
