@@ -136,11 +136,11 @@ async function doSpin(isFast){
   
   playSound('spin');
   
-  // ЧЕСТНЫЙ ШАНС БОНУСОВ (по 15% на каждый)
+  // ШАНС БОНУСОВ (Сделал по 10% на каждый, чтобы выпадали реже)
   let roll = Math.random() * 100;
   purpleActive = false; goldActive = false;
-  if (roll < 15) { purpleActive = true; }
-  else if (roll < 30) { goldActive = true; }
+  if (roll < 10) { purpleActive = true; }
+  else if (roll < 20) { goldActive = true; }
   
   let targetAngle = 0;
   let outcome = 'lose';
@@ -148,10 +148,8 @@ async function doSpin(isFast){
   if (purpleActive) { outcome = 'purple'; targetAngle = 180; }
   else if (goldActive) { outcome = 'gold'; targetAngle = 180; }
   else {
-    // Если бонуса нет, крутим на обычный выигрыш/проигрыш
     const gs=180-chance*1.8, ge=180+chance*1.8;
     targetAngle = Math.random() * 360;
-    // Сдвигаем стрелку, если она случайно попала в центр (зону бонуса)
     if (targetAngle >= 172.5 && targetAngle <= 187.5) targetAngle = 200; 
     if (targetAngle >= gs && targetAngle <= ge) outcome = 'win';
   }
@@ -186,83 +184,127 @@ async function doSpin(isFast){
 $('spinBtn').onclick=()=>doSpin(false);
 $('fastSpinBtn').onclick=()=>doSpin(true);
 
-// ФИОЛЕТОВЫЙ БОНУС (ИСПРАВЛЕН)
+// ==========================================
+// ФИОЛЕТОВЫЙ БОНУС (Крутит само колесо!)
+// ==========================================
 function startBonus(){
   bonusMode=true; bonusStreak=1; 
   flashScreen('#9b4dca'); vibrate([200, 100, 200, 100, 500]);
   $('bonusBarWrap').classList.add('active'); updateBonusBar();
-  resultEl.className='result bonus'; resultEl.textContent='🟣 БОНУС! Удвоение!';
+  resultEl.className='result bonus'; resultEl.textContent='🟣 БОНУС УДВОЕНИЯ!';
   resultEl.style.fontSize = '20px'; resultEl.style.textShadow = '0 0 15px #c77dff';
+  
+  // Запускаем первый шаг через 1.5 секунды
   setTimeout(runPurpleStep, 1500);
 }
-function updateBonusBar() { const bar = $('bonusBar'); const text = $('bonusBarText'); text.textContent = 'x' + bonusStreak; bar.style.width = Math.min(100, (bonusStreak / 6) * 100) + '%'; }
-function runPurpleStep(){
-  const u=current(); if(!u) { finishPurple(false); return; }
-  const win = Math.random() < 0.5, target = win ? 180 + (Math.random()-.5)*90 : Math.random()*180;
-  hubText.textContent='...';
-  spinNeedle(target, async () => {
-    if(win){ bonusStreak++; updateBonusBar(); resultEl.className='result win'; resultEl.textContent='🔥 Удача! Удвоение!'; setTimeout(runPurpleStep, 800); } 
-    else { finishPurple(true); }
-  }, true);
+
+function updateBonusBar() { 
+  const bar = $('bonusBar'); 
+  const text = $('bonusBarText'); 
+  text.textContent = 'x' + bonusStreak; 
+  bar.style.width = Math.min(100, (bonusStreak / 6) * 100) + '%'; 
 }
+
+function runPurpleStep(){
+  const u = current(); 
+  if(!u) { finishPurple(false); return; }
+  
+  // Имитируем крутку: 50% на успех
+  const win = Math.random() < 0.5;
+  // Если успех, кидаем стрелку в зеленую зону, если нет - в черную
+  const target = win ? 180 + (Math.random() - 0.5) * 90 : Math.random() * 180;
+  
+  hubText.textContent='...';
+  hubText.className='hub-text streak';
+  
+  spinNeedle(target, async () => {
+    if(win){ 
+      bonusStreak++; 
+      updateBonusBar(); 
+      resultEl.className='result win'; 
+      resultEl.textContent='🔥 Удача! Удвоение!'; 
+      hubText.textContent = 'x' + bonusStreak;
+      // Следующий шаг через 800 мс
+      setTimeout(runPurpleStep, 800); 
+    } 
+    else { 
+      finishPurple(true); 
+    }
+  }, true); // true = быстрая анимация (1 сек)
+}
+
 async function finishPurple(isWin){
-  bonusMode=false; $('bonusBarWrap').classList.remove('active');
-  const u=current();
+  bonusMode = false; 
+  $('bonusBarWrap').classList.remove('active');
+  const u = current();
+  
   if(u && bonusStreak > 0){
     const bet = Math.floor(Number(betEl.value)) || 10;
     const winAmt = bet * Math.pow(2, bonusStreak - 1);
-    if(isWin) { u.coins+=winAmt; await addCoins(winAmt); resultEl.className='result win'; resultEl.textContent=`🔥 БОНУС ЗАВЕРШЕН! Забрано: +${winAmt} 🪙`; } 
+    
+    if(isWin) { 
+      u.coins += winAmt; await addCoins(winAmt); 
+      resultEl.className='result win'; 
+      resultEl.textContent=`🔥 БОНУС ЗАВЕРШЕН! Забрано: +${winAmt} 🪙`; 
+    } 
     else {
       const prevAmt = bonusStreak > 1 ? bet * Math.pow(2, bonusStreak - 2) : 0;
-      if(prevAmt > 0) { u.coins+=prevAmt; await addCoins(prevAmt); resultEl.className='result bonus'; resultEl.textContent=`Бонус окончен. Забрано: +${prevAmt} 🪙`; } 
-      else { resultEl.className='result lose'; resultEl.textContent='Бонус сгорел на первом шаге.'; }
+      if(prevAmt > 0) { 
+        u.coins += prevAmt; await addCoins(prevAmt); 
+        resultEl.className='result bonus'; 
+        resultEl.textContent=`Бонус окончен. Забрано: +${prevAmt} 🪙`; 
+      } 
+      else { 
+        resultEl.className='result lose'; 
+        resultEl.textContent='Бонус сгорел на первом шаге.'; 
+      }
     }
     updateBalance();
   }
+  
+  // Возвращаем игру в нормальное русло
   drawWheel(getEffectiveChance()); 
-  spinning=false; 
-  $('spinBtn').disabled=false; 
-  $('fastSpinBtn').disabled=false;
+  spinning = false; 
+  $('spinBtn').disabled = false; 
+  $('fastSpinBtn').disabled = false;
+  setTimeout(()=>{hubText.className='hub-text';updateHub()}, 1500);
 }
 
+// ==========================================
+// ЗОЛОТОЙ БОНУС (Без рулетки, сразу результат)
+// ==========================================
 function startGoldBonus(){
   bonusMode=true; 
   flashScreen('#ffcc00'); vibrate([300, 100, 300]);
   resultEl.className='result bonus'; resultEl.textContent='🟡 ЗОЛОТОЙ БОНУС!';
   resultEl.style.fontSize = '20px'; resultEl.style.textShadow = '0 0 15px #ffcc00';
+  
   const bet = Math.floor(Number(betEl.value)) || 10;
   const items = [{mult: 1.5, chance: 50}, {mult: 2, chance: 25}, {mult: 3, chance: 15}, {mult: 5, chance: 9}, {mult: 10, chance: 1}];
   let r = Math.random() * 100, winner = items[0];
   for(let i of items) { if (r < i.chance) { winner = i; break; } r -= i.chance; }
 
-  $('caseModal').classList.add('active'); $('modalTitle').textContent = '🟡 ЗОЛОТОЙ КЕЙС'; $('modalContents').style.display='none'; $('modalLog').textContent = '';
-  const b = $('modalOpenBtn'); b.disabled = true; b.textContent = 'КРУТИМ...';
-  $('modalRouletteWrap').innerHTML = '<div class="roulette-view"><div class="roulette-strip" id="strip"></div><div class="roulette-marker"></div></div>';
-  
-  const strip = $('strip'); const cells = [];
-  for(let i=0; i<40; i++) { cells.push(items[Math.floor(Math.random()*items.length)].mult); }
-  cells[32] = winner.mult;
-  strip.innerHTML = cells.map(m => `<div class="roulette-cell" style="color:#ffcc00;font-weight:900;font-size:20px;">x${m}</div>`).join('');
-  
-  setTimeout(()=>{ const view=document.querySelector('.roulette-view'), offset=-(32*66)+(view.offsetWidth/2)-30; strip.style.transition='transform 3s cubic-bezier(.1,.8,.2,1)'; strip.style.transform=`translateX(${offset}px)`; }, 50);
-
+  // Просто ждем 2 секунды (имитация открытия) и выдаем результат
   setTimeout(async ()=>{
     const totalWin = Math.floor(bet * winner.mult);
-    currentUser.coins+=totalWin; await addCoins(totalWin); updateBalance();
-    b.textContent='ЗАБРАТЬ'; b.disabled=false; b.onclick=()=>{
-       $('caseModal').classList.remove('active'); 
-       bonusMode=false; 
-       spinning=false;
-       $('spinBtn').disabled=false; 
-       $('fastSpinBtn').disabled=false;
-       resultEl.className='result win'; resultEl.textContent=`🟡 ИКС x${winner.mult}! Выигрыш: +${totalWin} 🪙`;
-       drawWheel(getEffectiveChance()); 
-    };
-    $('modalLog').textContent = `Выпал множитель x${winner.mult}!`;
-  }, 3150);
+    currentUser.coins += totalWin; 
+    await addCoins(totalWin); 
+    updateBalance();
+    
+    resultEl.className='result win'; 
+    resultEl.textContent=`🟡 ИКС x${winner.mult}! Выигрыш: +${totalWin} 🪙`;
+    
+    bonusMode=false; 
+    spinning=false;
+    $('spinBtn').disabled=false; 
+    $('fastSpinBtn').disabled=false;
+    drawWheel(getEffectiveChance()); 
+  }, 2000);
 }
 
-// ВСЕ 10 КЕЙСОВ
+// ==========================================
+// КЕЙСЫ (Без рулетки, сразу результат)
+// ==========================================
 const CASES=[
 {id:'1',name:'Чикен',price:20,emoji:'🍔',items:[{emoji:'🍞',name:'Хлеб',w:30,val:2},{emoji:'🥬',name:'Салат',w:25,val:5},{emoji:'🍅',name:'Томат',w:18,val:10},{emoji:'🧅',name:'Лук',w:12,val:15},{emoji:'🐔',name:'Курица',w:10,val:25},{emoji:'🧀',name:'Сыр',w:4,val:40},{emoji:'🦱',name:'Волос',w:1,val:60}]},
 {id:'2',name:'Чизбургер',price:30,emoji:'🧀',items:[{emoji:'🍞',name:'Хлеб',w:28,val:3},{emoji:'🥬',name:'Салат',w:22,val:8},{emoji:'🍅',name:'Томат',w:18,val:15},{emoji:'🧀',name:'Сыр',w:15,val:30},{emoji:'🥩',name:'Мясо',w:10,val:50},{emoji:'🌶️',name:'Перец',w:6,val:70},{emoji:'🦱',name:'Волос',w:1,val:90}]},
@@ -278,24 +320,39 @@ const CASES=[
 
 function totalW(items){return items.reduce((s,i)=>s+i.w,0)}
 function pickPrize(items){let r=Math.random()*totalW(items);for(const i of items){if(r<i.w)return i;r-=i.w}return items[items.length-1]}
-function renderCases(){const grid=$('caseGrid');grid.innerHTML='';CASES.forEach(c=>{const d=document.createElement('div');d.className='case-tile';d.innerHTML=`<div class="emoji">${c.emoji}</div><div class="name">${c.name}</div><div class="price">${c.price} 🪙</div>`;d.onclick=()=>openCaseModal(c.id);grid.appendChild(d)})}
-function openCaseModal(id){const c=CASES.find(x=>x.id===id);if(!c)return;$('caseModal').classList.add('active');$('modalLog').textContent='';$('modalTitle').textContent=`${c.emoji} ${c.name} (${c.price}🪙)`;const tw=totalW(c.items);$('modalContents').innerHTML=c.items.map(i=>`<div class="modal-item">${i.emoji} ${i.name} <b>${(i.w/tw*100).toFixed(1)}%</b> → ${i.val}🪙</div>`).join('');$('modalContents').style.display='flex';const b=$('modalOpenBtn');b.textContent=`ОТКРЫТЬ ЗА ${c.price} 🪙`;b.disabled=false;b.onclick=()=>spinCase(c);$('modalRouletteWrap').innerHTML=''}
-window.closeModal=()=>{$('caseModal').classList.remove('active')};
-async function spinCase(c){
+
+function renderCases(){
+  const grid=$('caseGrid');grid.innerHTML='';
+  CASES.forEach(c=>{
+    const d=document.createElement('div');
+    d.className='case-tile';
+    d.innerHTML=`<div class="emoji">${c.emoji}</div><div class="name">${c.name}</div><div class="price">${c.price} 🪙</div>`;
+    d.onclick=()=>buyCase(c);
+    grid.appendChild(d);
+  })
+}
+
+async function buyCase(c){
   const u=current(); 
-  if(u.coins<c.price){$('modalLog').textContent='Мало монет!';return}
-  u.coins-=c.price; updateBalance(); await addCoins(-c.price);
-  const b=$('modalOpenBtn');b.disabled=true;b.textContent='КРУТИМ...';$('modalContents').style.display='none';$('modalLog').textContent='';
-  const winner=pickPrize(c.items),cells=Array.from({length:40},()=>pickPrize(c.items));cells[32]=winner;
-  $('modalRouletteWrap').innerHTML='<div class="roulette-view"><div class="roulette-strip" id="strip"></div><div class="roulette-marker"></div></div>';
-  const strip=$('strip');strip.innerHTML=cells.map(i=>`<div class="roulette-cell">${i.emoji}</div>`).join('');playSound('spin');
-  setTimeout(()=>{const view=document.querySelector('.roulette-view'),offset=-(32*66)+(view.offsetWidth/2)-30;strip.style.transition='transform 3s cubic-bezier(.1,.8,.2,1)';strip.style.transform=`translateX(${offset}px)`},50);
-  setTimeout(async ()=>{
-    u.coins+=winner.val; updateBalance(); await addCoins(winner.val);
-    playSound('win');vibrate(100);
-    $('modalLog').textContent=`🎁 Выпало: ${winner.emoji} ${winner.name} (+${winner.val} 🪙)`;
-    b.textContent='ЗАКРЫТЬ';b.disabled=false;b.onclick=closeModal;
-  },3150);
+  if(u.coins<c.price){
+    $('caseLog').textContent='Мало монет!';
+    $('caseLog').style.color = '#ff6b4a';
+    return;
+  }
+  
+  u.coins-=c.price; 
+  updateBalance(); 
+  await addCoins(-c.price);
+  
+  const winner=pickPrize(c.items);
+  u.coins+=winner.val; 
+  updateBalance(); 
+  await addCoins(winner.val);
+  
+  playSound('win');
+  vibrate([100, 50, 100]);
+  $('caseLog').textContent=`🎁 Выпало: ${winner.emoji} ${winner.name} (+${winner.val} 🪙)`;
+  $('caseLog').style.color = '#7ee06b';
 }
 
 // КЛИКЕР
@@ -313,31 +370,4 @@ async function fillAllSelects(){
     const d = doc.data(); 
     if(!d.isAdmin) {
       if(selChance) selChance.innerHTML += `<option value="${doc.id}">${d.email}</option>`;
-      if(selTroll) selTroll.innerHTML += `<option value="${doc.id}">${d.email}</option>`;
-    } 
-  });
-}
-
-$('adminGiveBtn').onclick = async () => {
-  const email=$('adminTarget').value.trim(), amt=parseInt($('adminCoins').value);
-  if(!email||!amt) return;
-  const snap = await getDocs(query(collection(db, "users"), where("email", "==", email)));
-  if(snap.empty){$('adminGiveLog').textContent='Не найден';return}
-  snap.forEach(async d => { await updateDoc(doc(db,"users",d.id),{coins:increment(amt)}); });
-  $('adminGiveLog').textContent='Выдано!';
-};
-
-$('adminChanceBtn').onclick = async () => {
-  const id=$('adminChanceTarget').value, val=parseFloat($('adminChanceValue').value);
-  if(id && val>0) { await updateDoc(doc(db,"users",id),{forcedChance:val}); $('adminChanceLog').textContent='Шанс задан!'; }
-};
-$('adminChanceResetBtn').onclick = async () => {
-  const id=$('adminChanceTarget').value;
-  if(id) { await updateDoc(doc(db,"users",id),{forcedChance:null}); $('adminChanceLog').textContent='Сброшено!'; }
-};
-
-$('adminGodBtn').onclick = async () => { const id=$('adminTrollTarget').value; if(id){ await updateDoc(doc(db,"users",id),{coins:1000000}); $('adminTrollLog').textContent='БОГ!'; } };
-$('adminZeroBtn').onclick = async () => { const id=$('adminTrollTarget').value; if(id){ await updateDoc(doc(db,"users",id),{coins:0}); $('adminTrollLog').textContent='Обнулен'; } };
-$('adminJackpotBtn').onclick = async () => { const id=$('adminTrollTarget').value; if(id){ await updateDoc(doc(db,"users",id),{coins:10000}); $('adminTrollLog').textContent='Джекпот!'; } };
-
-onAuthStateChanged(auth, user => { if(!user) showAuth(); });
+      if(
