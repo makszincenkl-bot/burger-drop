@@ -160,8 +160,14 @@ async function doSpin(isFast){
     purpleActive = false; goldActive = false;
     drawWheel(getEffectiveChance());
 
-    if(outcome==='purple'){ resultEl.className='result bonus';resultEl.textContent='🟣 БОНУС УДВОЕНИЯ!'; startBonus(); } 
-    else if (outcome==='gold') { resultEl.className='result bonus';resultEl.textContent='🟡 ЗОЛОТОЙ БОНУС!'; startGoldBonus(); } 
+    if(outcome==='purple'){ 
+      resultEl.className='result bonus';resultEl.textContent='🟣 БОНУС УДВОЕНИЯ!'; 
+      startBonus(); 
+    } 
+    else if (outcome==='gold') { 
+      resultEl.className='result bonus';resultEl.textContent='🟡 ЗОЛОТОЙ БОНУС!'; 
+      startGoldBonus(); 
+    } 
     else if(outcome==='win'){
       const winAmt=Math.floor(bet*100/chance);
       u.coins+=winAmt; updateBalance(); await addCoins(winAmt);
@@ -244,7 +250,11 @@ function startGoldBonus(){
     const totalWin = Math.floor(bet * winner.mult);
     currentUser.coins+=totalWin; await addCoins(totalWin); updateBalance();
     b.textContent='ЗАБРАТЬ'; b.disabled=false; b.onclick=()=>{
-       $('caseModal').classList.remove('active'); bonusMode=false; $('spinBtn').disabled=false; $('fastSpinBtn').disabled=false;
+       $('caseModal').classList.remove('active'); 
+       bonusMode=false; 
+       spinning=false; 
+       $('spinBtn').disabled=false; 
+       $('fastSpinBtn').disabled=false;
        resultEl.className='result win'; resultEl.textContent=`🟡 ИКС x${winner.mult}! Выигрыш: +${totalWin} 🪙`;
        drawWheel(getEffectiveChance()); 
     };
@@ -292,23 +302,4 @@ async function spinCase(c){
 let clicks=0,perClick=1,autoLevel=0,timer=null;
 function updateClickerUI(){$('perClick').textContent=perClick;$('clickCount').textContent=clicks}
 $('burgerClick').onclick=async ()=>{const u=current();if(!u)return;clicks++;u.coins+=perClick;updateBalance();updateClickerUI();vibrate(20);await addCoins(perClick);};
-$('buyAuto').onclick=async ()=>{if(autoLevel>=5)return;const cost=50*(autoLevel+1),u=current();if(u.coins<cost){$('clickerLog').textContent='Мало монет';return}u.coins-=cost;autoLevel++;perClick++;updateBalance();updateClickerUI();await addCoins(-cost);if(!timer)timer=setInterval(async ()=>{const cu=current();if(cu){cu.coins+=perClick;updateBalance();updateClickerUI();await addCoins(perClick);}},1000)};
-
-// ПОЛНОЦЕННАЯ АДМИНКА
-async function fillAllSelects(){
-  const snap = await getDocs(collection(db, "users"));
-  const sel = $('adminTrollTarget'); sel.innerHTML = '';
-  snap.forEach(doc => { const d = doc.data(); if(!d.isAdmin) sel.innerHTML += `<option value="${doc.id}">${d.email}</option>`; });
-}
-$('adminGiveBtn').onclick = async () => {
-  const email=$('adminTarget').value.trim(), amt=parseInt($('adminCoins').value);
-  if(!email||!amt) return;
-  const snap = await getDocs(query(collection(db, "users"), where("email", "==", email)));
-  if(snap.empty){$('adminGiveLog').textContent='Не найден';return}
-  snap.forEach(async d => { await updateDoc(doc(db,"users",d.id),{coins:increment(amt)}); });
-  $('adminGiveLog').textContent='Выдано!';
-};
-$('adminGodBtn').onclick = async () => { const id=$('adminTrollTarget').value; if(id){ await updateDoc(doc(db,"users",id),{coins:1000000}); $('adminTrollLog').textContent='БОГ!'; } };
-$('adminZeroBtn').onclick = async () => { const id=$('adminTrollTarget').value; if(id){ await updateDoc(doc(db,"users",id),{coins:0}); $('adminTrollLog').textContent='Обнулен'; } };
-
-onAuthStateChanged(auth, user => { if(!user) showAuth(); });
+$('buyAuto').onclick=async ()=>{if(autoLevel>=5)return;const cost=50*(autoLevel+1),u=current();if(u.coins<cost){$('clickerLog').textContent='Мало монет';return
