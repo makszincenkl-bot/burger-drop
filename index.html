@@ -18,6 +18,9 @@
    <div class="err" id="loginErr"></div>
    <button id="loginBtn">ВОЙТИ</button>
    <button class="link-btn" id="showReg">Нет аккаунта? Регистрация</button>
+   <div style="font-size: 11px; color: #b8d8a8; margin-top: 15px; opacity: 0.7; line-height: 1.4;">
+     Burger Drop не является заработком, а просто развлечение
+   </div>
  </div>
 
  <div id="regScreen" class="auth" style="display:none">
@@ -27,26 +30,33 @@
    <div class="err" id="regErr"></div>
    <button id="regBtn">СОЗДАТЬ</button>
    <button class="link-btn" id="showLogin">Назад ко входу</button>
+   <div style="font-size: 11px; color: #b8d8a8; margin-top: 15px; opacity: 0.7; line-height: 1.4;">
+     Burger Drop не является заработком, а просто развлечение
+   </div>
  </div>
 
  <div id="gameScreen" style="display:none">
   <div class="userbar"><span>👤 <span id="userName">—</span></span><button id="logoutBtn">Выйти</button></div>
   <div class="balance"><span class="label">Баланс</span><span class="coins-val"><span id="balance">100</span> 🪙</span></div>
+  
   <div class="tabs">
-    <button class="tab active" data-panel="game">🎡 Апгрейдер</button>
+    <button class="tab active" data-panel="upgrader">🎡 Апгрейдер</button>
+    <button class="tab" data-panel="mines">💣 Мины</button>
+    <button class="tab" data-panel="crash">📈 Краш</button>
     <button class="tab" data-panel="cases">🎁 Кейсы</button>
-    <button class="tab" data-panel="clicker">👆 Кликер</button>
+    <button class="tab" data-panel="inventory">🎒 Инвентарь</button>
+    <button class="tab" data-panel="deposit">💳 Пополнение</button>
     <button class="tab" data-panel="admin" id="adminTab" style="display:none">🛡 Админ</button>
   </div>
   
   <!-- АПГРЕЙДЕР -->
-  <div class="panel active" id="panel-game">
+  <div class="panel active" id="panel-upgrader">
    <div class="wheel-wrap"><div class="wheel" id="wheel"></div><div class="hub-text" id="hubText">50%</div><div class="needle-spinner" id="needle"><div class="needle-arm"></div></div></div>
    
    <div class="row">
-     <div><label>Предмет</label>
+     <div><label>Ваш предмет</label>
        <select id="upgradeItem" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ffa5004d; background: #0a190acc; color: #eaf5e6; font-size: 16px; font-weight: 600; outline: none;">
-         <option value="">-- Выберите предмет --</option>
+         <option value="coins">🪙 Монеты (Весь баланс)</option>
        </select>
      </div>
      <div><label>Шанс (%)</label><input type="number" id="chance" value="50" min="0.1" max="99" step="0.1"></div>
@@ -62,7 +72,39 @@
      <button id="fastSpinBtn" style="width: 60px; flex: none; padding: 0; font-size: 28px;">⚡</button>
    </div>
    <div class="result" id="result"></div>
-   <div class="bonus-bar-wrap" id="bonusBarWrap"><div class="bonus-bar-text" id="bonusBarText">x1</div><div class="bonus-bar" id="bonusBar"></div><div class="bonus-marker"></div></div>
+  </div>
+
+  <!-- МИНЫ -->
+  <div class="panel" id="panel-mines">
+    <div class="section-title">💣 Мины (5x5)</div>
+    <div style="margin-bottom: 15px;">
+      <div class="row">
+        <div><label>Ставка</label><input type="number" id="minesBet" value="10" min="1"></div>
+        <div><label>Кол-во мин</label><select id="minesCount" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ffa5004d; background: #0a190acc; color: #eaf5e6; font-size: 16px; font-weight: 600; outline: none;">
+          <option value="3">3 мины (x1.2 - x20)</option>
+          <option value="5">5 мин (x1.4 - x40)</option>
+          <option value="10">10 мин (x2 - x200)</option>
+        </select></div>
+      </div>
+      <button id="minesStartBtn" style="background:linear-gradient(135deg, #ff8c00, #b35c00);">НАЧАТЬ ИГРУ</button>
+      <div id="minesGrid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-top: 15px;"></div>
+      <div id="minesStatus" class="result" style="margin-top: 10px;"></div>
+      <button id="minesCashoutBtn" style="display:none; margin-top:10px; background:linear-gradient(135deg,#7ee06b,#4ca832);">ЗАБРАТЬ ВЫИГРЫШ</button>
+    </div>
+  </div>
+
+  <!-- КРАШ -->
+  <div class="panel" id="panel-crash">
+    <div class="section-title">📈 Краш</div>
+    <div style="background:#0a190a80; padding:20px; border-radius:12px; border:1px solid #ffa5004d;">
+      <div id="crashMultiplier" style="font-size: 48px; font-weight: 900; color: #7ee06b; text-align: center; margin-bottom: 20px; text-shadow: 0 0 20px #7ee06b80;">x1.00</div>
+      <div class="row">
+        <div><label>Ставка</label><input type="number" id="crashBet" value="10" min="1"></div>
+        <div><label>Авто-стоп (x)</label><input type="number" id="crashAutoStop" value="2.0" min="1.1" step="0.1"></div>
+      </div>
+      <button id="crashStartBtn" style="background:linear-gradient(135deg, #ff8c00, #b35c00);">СТАРТ</button>
+      <div id="crashStatus" class="result" style="margin-top:10px;"></div>
+    </div>
   </div>
 
   <!-- КЕЙСЫ -->
@@ -71,8 +113,52 @@
     <div class="case-grid" id="caseGrid"></div>
   </div>
 
-  <!-- КЛИКЕР -->
-  <div class="panel" id="panel-clicker"><div class="section-title">Кликер</div><div class="burger-click" id="burgerClick">🍔</div><div class="clicker-stats"><div>За клик: <b id="perClick">1</b></div><div>Кликов: <b id="clickCount">0</b></div></div><button id="buyAuto">Купить автокликер (50 🪙)</button><div class="log" id="clickerLog"></div></div>
+  <!-- ИНВЕНТАРЬ -->
+  <div class="panel" id="panel-inventory">
+    <div class="section-title">🎒 Ваш Инвентарь</div>
+    <button id="sellAllBtn" style="background:linear-gradient(135deg,#ffea00,#ff8c00); color:#000; margin-bottom:15px;">💰 ПРОДАТЬ ВСЁ</button>
+    <div id="inventoryList"></div>
+  </div>
+
+  <!-- ПОПОЛНЕНИЕ -->
+  <div class="panel" id="panel-deposit">
+    <div class="section-title">Выберите способ оплаты</div>
+    <div style="display: flex; flex-direction: column; gap: 15px;">
+      <!-- Кнопка СБП -->
+      <div id="btnSbp" style="background: linear-gradient(135deg, #2196F3, #0d47a1); border-radius: 15px; padding: 20px; cursor: pointer; text-align: left; position: relative; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
+        <div style="font-size: 24px; font-weight: 900; color: #fff; margin-bottom: 5px;">СБП</div>
+        <div style="font-size: 12px; color: #bbdefb;">Система быстрых платежей</div>
+        <div style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); font-size: 40px; opacity: 0.5;">🏦</div>
+      </div>
+      <!-- Кнопка Крипта -->
+      <div id="btnCrypto" style="background: linear-gradient(135deg, #00bcd4, #006064); border-radius: 15px; padding: 20px; cursor: pointer; text-align: left; position: relative; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
+        <div style="font-size: 24px; font-weight: 900; color: #fff; margin-bottom: 5px;">USDT (TON)</div>
+        <div style="font-size: 12px; color: #b2ebf2;">Криптовалюта</div>
+        <div style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); font-size: 40px; opacity: 0.5;">💎</div>
+      </div>
+    </div>
+
+    <!-- НАДПИСЬ ПОД КНОПКАМИ -->
+    <div style="text-align: center; font-size: 14px; color: #ffcc66; margin-top: 15px; font-weight: 600;">
+      Насчет пополнения вы можете договориться в телеграмме <a href="https://t.me/pruneslo" target="_blank" style="color: #ff8c00; text-decoration: underline;">@pruneslo</a>
+    </div>
+
+    <!-- Окошко Крипты -->
+    <div id="cryptoBox" style="display: none; margin-top: 20px; background: #0a190acc; border: 1px solid #00bcd4; border-radius: 12px; padding: 15px; text-align: left;">
+      <div style="font-size: 13px; color: #eaf5e6; margin-bottom: 10px;">Отправьте USDT (TON) на адрес:</div>
+      <div style="display: flex; gap: 5px; margin-bottom: 15px;">
+        <input type="text" id="tonAddress" value="UQB9VYMzDhPsOvjxLIO3OgOEOPx_uNaoPfe_a9BH4s88sKm_" readonly style="font-size: 12px; padding: 10px; background: #000; border: 1px solid #00bcd4; color: #00bcd4; border-radius: 8px; flex: 1; outline: none;">
+        <button id="copyTonBtn" style="width: auto; padding: 10px 15px; font-size: 12px; background: #00bcd4; color: #fff; border-radius: 8px; margin: 0;">КОПИЯ</button>
+      </div>
+      <div style="background: #ff8c001a; border-left: 3px solid #ff8c00; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+        <div style="font-size: 12px; color: #ffcc66; margin-bottom: 5px;">⚠️ ВАЖНО:</div>
+        <div style="font-size: 12px; color: #b8d8a8; line-height: 1.4;">Отправляйте только <b>USDT в сети TON</b>. После перевода монеты зачислятся на ваш баланс в течение 5-10 минут.</div>
+      </div>
+      <div style="text-align: center; font-size: 13px; color: #b8d8a8;">
+        Если монеты не пришли, напишите в поддержку (кнопка робота справа внизу).
+      </div>
+    </div>
+  </div>
   
   <!-- АДМИНКА -->
   <div class="panel" id="panel-admin">
@@ -90,17 +176,48 @@
       <div class="admin-row"><button class="small" id="adminChanceBtn">ОК</button><button class="small btn-danger" id="adminChanceResetBtn">СБРОС</button></div>
       <div class="log" id="adminChanceLog"></div>
     </div>
-    <div class="case-block">
-      <div style="font-size:13px;font-weight:700;margin-bottom:8px">💀 Приколы</div>
-      <div class="admin-field"><label>Игрок</label><select id="adminTrollTarget"></select></div>
-      <div class="admin-row"><button class="small btn-gold" id="adminGodBtn">БОГ</button><button class="small btn-danger" id="adminZeroBtn">ОБНУЛИТЬ</button></div>
-      <div class="admin-row"><button class="small btn-purple" id="adminJackpotBtn">ДЖЕКПОТ</button><button class="small" id="adminClearInvBtn">ОЧИСТИТЬ ИНВЕНТАРЬ</button></div>
-      <div class="log" id="adminTrollLog"></div>
-    </div>
   </div>
  </div>
 </div>
 
+<!-- Кнопка Робот (Поддержка) -->
+<div id="supportBtn" style="position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; background: linear-gradient(135deg, #2196F3, #0d47a1); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; cursor: pointer; box-shadow: 0 5px 20px rgba(33, 150, 243, 0.4); z-index: 90; transition: transform 0.2s;">
+  🤖
+</div>
+
+<!-- Модальное окно Поддержки -->
+<div class="modal-overlay" id="supportModal" style="z-index: 1000;">
+  <div class="modal" style="max-width: 440px; display: flex; flex-direction: column; height: 80vh; padding: 15px;">
+    <div class="close-modal" onclick="document.getElementById('supportModal').classList.remove('active')">×</div>
+    <div class="modal-head" style="margin-bottom: 10px;">🤖 Техподдержка</div>
+    
+    <!-- Чат (Для игрока) -->
+    <div id="playerChatView" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+      <div id="supportMessages" style="flex: 1; overflow-y: auto; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; padding-right: 5px;">
+        <div style="color: #b8d8a8; font-size: 12px; text-align: center; margin-top: 20px;">Напишите нам, если у вас проблемы с балансом или игрой.</div>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <input type="text" id="supportInput" placeholder="Ваше сообщение..." style="flex: 1; padding: 10px; font-size: 14px; margin: 0;">
+        <button id="supportSendBtn" class="small" style="width: 60px; padding: 0; margin: 0;">➤</button>
+      </div>
+    </div>
+
+    <!-- Панель Админа -->
+    <div id="adminChatView" style="flex: 1; display: none; flex-direction: column; overflow: hidden;">
+      <div style="font-size: 13px; font-weight: 700; color: #2196F3; margin-bottom: 5px;">Список тикетов:</div>
+      <select id="adminTicketSelect" style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #ffa5004d; background: #0a190acc; color: #eaf5e6; margin-bottom: 10px; outline: none;"></select>
+      
+      <div id="adminTicketsList" style="flex: 1; overflow-y: auto; margin-bottom: 10px; font-size: 12px; background: #0000004d; border-radius: 8px; padding: 5px;"></div>
+      
+      <div style="display: flex; gap: 8px;">
+        <input type="text" id="adminTicketInput" placeholder="Ответ игроку..." style="flex: 1; padding: 10px; font-size: 14px; margin: 0;">
+        <button id="adminTicketSendBtn" class="small" style="width: 60px; padding: 0; margin: 0;">➤</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Модальное окно для кейсов -->
 <div class="modal-overlay" id="caseModal">
   <div class="modal">
     <div class="close-modal" onclick="closeModal()">×</div>
