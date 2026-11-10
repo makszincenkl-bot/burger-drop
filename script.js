@@ -297,3 +297,18 @@ $('buyAuto').onclick=async ()=>{if(autoLevel>=5)return;const cost=50*(autoLevel+
 // ПОЛНОЦЕННАЯ АДМИНКА
 async function fillAllSelects(){
   const snap = await getDocs(collection(db, "users"));
+  const sel = $('adminTrollTarget'); sel.innerHTML = '';
+  snap.forEach(doc => { const d = doc.data(); if(!d.isAdmin) sel.innerHTML += `<option value="${doc.id}">${d.email}</option>`; });
+}
+$('adminGiveBtn').onclick = async () => {
+  const email=$('adminTarget').value.trim(), amt=parseInt($('adminCoins').value);
+  if(!email||!amt) return;
+  const snap = await getDocs(query(collection(db, "users"), where("email", "==", email)));
+  if(snap.empty){$('adminGiveLog').textContent='Не найден';return}
+  snap.forEach(async d => { await updateDoc(doc(db,"users",d.id),{coins:increment(amt)}); });
+  $('adminGiveLog').textContent='Выдано!';
+};
+$('adminGodBtn').onclick = async () => { const id=$('adminTrollTarget').value; if(id){ await updateDoc(doc(db,"users",id),{coins:1000000}); $('adminTrollLog').textContent='БОГ!'; } };
+$('adminZeroBtn').onclick = async () => { const id=$('adminTrollTarget').value; if(id){ await updateDoc(doc(db,"users",id),{coins:0}); $('adminTrollLog').textContent='Обнулен'; } };
+
+onAuthStateChanged(auth, user => { if(!user) showAuth(); });
