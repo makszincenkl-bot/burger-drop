@@ -118,15 +118,12 @@ function enterGame(){
 document.querySelectorAll('.tab[data-panel]').forEach(t=>t.addEventListener('click',()=>{document.querySelectorAll('.tab[data-panel]').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');$('panel-'+t.dataset.panel).classList.add('active');}));
 
 // ВИЗУАЛЬНОЕ КОЛЕСО
-function drawWheel(chance, isPurpleMode = false){
+function drawWheel(chance, isGold = false){
   if(!$('wheel')) return;
   const gd=chance*3.6, gs=180-gd/2, ge=180+gd/2;
   let stops=`#2a1a0a 0deg,#3a2410 ${gs}deg,#4ca832 ${gs}deg,#7ee06b 180deg,#3d8f27 ${ge}deg,#1a0f05 ${ge}deg,#2a1a0a 360deg`;
   
-  if (isPurpleMode) {
-      // В фиолетовом режиме рисуем 3 фиолетовые зоны: 172.5-187.5, 80-100, 260-280
-      stops = `#2a1a0a 0deg,#3a2410 80deg,#9b4dca 80deg,#c77dff 100deg,#2a1a0a 100deg,#2a1a0a 172.5deg,#9b4dca 172.5deg,#c77dff 187.5deg,#2a1a0a 187.5deg,#2a1a0a 260deg,#9b4dca 260deg,#c77dff 280deg,#2a1a0a 280deg,#2a1a0a 360deg`;
-  } else if (goldActive) {
+  if (isGold) {
       stops=`#2a1a0a 0deg,#3a2410 ${gs}deg,#4ca832 ${gs}deg,#7ee06b 172.5deg,#ffcc00 172.5deg,#ffea00 180deg,#b38f00 187.5deg,#7ee06b 187.5deg,#3d8f27 ${ge}deg,#1a0f05 ${ge}deg,#2a1a0a 360deg`;
   }
   $('wheel').style.background=`conic-gradient(from 0deg,${stops})`;
@@ -146,7 +143,7 @@ function updateUpgraderPreview() {
 if($('chance')) $('chance').addEventListener('input', updateUpgraderPreview);
 if($('upgradeBet')) $('upgradeBet').addEventListener('input', updateUpgraderPreview);
 
-let currentRotation = 0, spinning = false, bonusMode = false, bonusStreak = 0, purpleActive = false, goldActive = false;
+let currentRotation = 0, spinning = false, bonusMode = false, bonusStreak = 0, goldActive = false;
 
 function spinNeedle(targetAngle, onDone, fast) {
   const currentMod = ((currentRotation % 360) + 360) % 360;
@@ -177,13 +174,12 @@ async function doUpgrade(isFast){
 
   if($('result')) $('result').textContent = '';
   
-  purpleActive = false; goldActive = false;
+  goldActive = false;
   let roll = Math.random() * 100;
   
   let bonusHit = false;
   let bonusType = '';
   
-  // Бонусы срабатывают только если реальный шанс не забанен (не 0)
   if (realChance > 0) {
       if (roll < 10) { bonusHit = true; bonusType = 'purple'; } 
       else if (roll < 20) { bonusHit = true; bonusType = 'gold'; }
@@ -193,7 +189,7 @@ async function doUpgrade(isFast){
   let isWin = false;
 
   if (bonusHit) {
-      targetAngle = 180;
+      targetAngle = 180; 
   } else {
       const gs = 180 - visualChance * 1.8;
       const ge = 180 + visualChance * 1.8;
@@ -213,15 +209,12 @@ async function doUpgrade(isFast){
   if($('hubText')) $('hubText').textContent='...';
 
   spinNeedle(targetAngle, async ()=>{
-    purpleActive = false; goldActive = false;
     drawWheel(visualChance);
 
     if(bonusHit && targetAngle === 180){ 
         if (bonusType === 'purple') {
-            $('result').className='result bonus'; $('result').textContent='🟣 БОНУС УДВОЕНИЯ!'; 
             startPurpleBonus(betAmount, mult); 
         } else {
-            $('result').className='result bonus'; $('result').textContent='🟡 ЗОЛОТОЙ БОНУС!'; 
             startGoldBonus(betAmount, mult); 
         }
     } 
@@ -255,24 +248,39 @@ function updateHub() {
 if($('spinBtn')) $('spinBtn').onclick = () => doUpgrade(false);
 if($('fastSpinBtn')) $('fastSpinBtn').onclick = () => doUpgrade(true);
 
-// ====== ФИОЛЕТОВЫЙ БОНУС (СТРИКИ) ======
+// ====== ФИОЛЕТОВЫЙ БОНУС (ВИЗУАЛЬНО 50%) ======
 function startPurpleBonus(baseBet, mult) {
   bonusMode = true; bonusStreak = 0; 
   playSound('win'); vibrate([200, 100, 200]);
   $('result').className='result bonus'; 
-  $('result').textContent = '🟣 СТРИК: 0';
+  $('result').textContent = '🟣 БОНУС АКТИВИРОВАН!';
+  
+  // Визуально расширяем колесо до 50%
+  drawWheel(50); 
+  
   runPurpleStep(baseBet, mult);
 }
 
 function runPurpleStep(baseBet, mult) {
-  // Шанс на успех в фиолетовом бонусе (например, 60%)
-  const win = Math.random() < 0.6; 
-  // Целимся либо в фиолетовую зону (успех), либо в черную (провал)
-  const target = win ? [90, 180, 270][Math.floor(Math.random()*3)] + (Math.random()*10-5) : Math.random()*360;
+  // Внутри бонуса шанс на успех всегда 50%
+  const win = Math.random() < 0.5; 
   
-  if($('hubText')) $('hubText').textContent = '...';
-  drawWheel(50, true); // Рисуем фиолетовое колесо
+  // Зона для 50% = 180 градусов (от 90 до 270)
+  const gs = 180 - 50 * 1.8; // 90 градусов
+  const ge = 180 + 50 * 1.8; // 270 градусов
   
+  let target = 0;
+  if (win) {
+      target = gs + Math.random() * (ge - gs);
+      if (target >= 172.5 && target <= 187.5) target = 200; // Избегаем центра
+  } else {
+      target = Math.random() * 360;
+      if (target >= gs && target <= ge) target = 45; // Сдвигаем в черное
+  }
+  
+  if($('hubText')) $('hubText').textContent = '50% | СТРИК: ' + bonusStreak;
+  
+  // Крутим МЕДЛЕННО (4 секунды)
   spinNeedle(target, async () => {
     if(win) { 
       bonusStreak++; 
@@ -283,7 +291,7 @@ function runPurpleStep(baseBet, mult) {
     else { 
       finishPurple(baseBet, mult); 
     }
-  }, true);
+  }, false); 
 }
 
 async function finishPurple(baseBet, mult) {
@@ -291,7 +299,6 @@ async function finishPurple(baseBet, mult) {
   drawWheel(getVisualChance()); // Возвращаем обычное колесо
   
   const u = current();
-  // Выигрыш от процентов умножается на 2^стрики
   const baseWin = baseBet * mult; 
   const bonusMult = Math.pow(2, bonusStreak);
   const finalWin = Math.floor(baseWin * bonusMult);
@@ -301,7 +308,7 @@ async function finishPurple(baseBet, mult) {
           u.coins += finalWin; updateBalance(); await addCoins(finalWin);
           $('result').className='result win'; $('result').textContent = `🟣 БОНУС! x${bonusMult}! +${finalWin} 🪙`;
       } else {
-          $('result').className='result lose'; $('result').textContent = `🟣 БОНУС ПРОВАЛЕН`;
+          $('result').className='result lose'; $('result').textContent = `🟣 БОНУС ПРОВАЛЕН (0 стриков)`;
       }
   }
   if($('hubText')) { $('hubText').className='hub-text'; updateHub(); }
@@ -309,40 +316,63 @@ async function finishPurple(baseBet, mult) {
   if($('spinBtn')) $('spinBtn').disabled = false; if($('fastSpinBtn')) $('fastSpinBtn').disabled = false;
 }
 
-// ====== ЗОЛОТОЙ БОНУС (РУЛЕТКА ИКСОВ) ======
+// ====== ЗОЛОТОЙ БОНУС ======
 function startGoldBonus(baseBet, mult) {
-  bonusMode = true; 
-  const items = [{mult: 1.5, chance: 50}, {mult: 2, chance: 25}, {mult: 3, chance: 15}, {mult: 5, chance: 9}, {mult: 10, chance: 1}];
-  let r = Math.random() * 100, winner = items[0];
-  for(let i of items) { if (r < i.chance) { winner = i; break; } r -= i.chance; }
-
-  $('caseModal').classList.add('active'); $('modalTitle').textContent = '🟡 ЗОЛОТОЙ КЕЙС'; $('modalContents').style.display='none'; $('modalLog').textContent = '';
-  const b = $('modalOpenBtn'); b.disabled = true; b.textContent = 'КРУТИМ...';
-  $('modalRouletteWrap').innerHTML = '<div class="roulette-view"><div class="roulette-strip" id="strip"></div><div class="roulette-marker"></div></div>';
+  bonusMode = true; goldActive = true;
   
-  const strip = $('strip'); const cells = [];
-  for(let i=0; i<40; i++) { cells.push(items[Math.floor(Math.random()*items.length)].mult); }
-  cells[32] = winner.mult;
-  strip.innerHTML = cells.map(m => `<div class="roulette-cell" style="color:#ffcc00;font-weight:900;font-size:22px;text-shadow:0 0 10px #ffcc00;background:rgba(0,0,0,0.5);">x${m}</div>`).join('');
+  $('result').className='result bonus'; 
+  $('result').textContent = '🟡 ЗОЛОТО ПАДАЕТ...';
   
-  setTimeout(()=>{ const view=document.querySelector('.roulette-view'), offset=-(32*66)+(view.offsetWidth/2)-30; strip.style.transition='transform 3s cubic-bezier(.1,.8,.2,1)'; strip.style.transform=`translateX(${offset}px)`; }, 50);
+  const drop = document.createElement('div');
+  drop.style.cssText = 'position:fixed; top:-100px; left:50%; transform:translateX(-50%); font-size:50px; z-index:9999; transition: top 1s ease-in, opacity 1s; opacity:0;';
+  drop.textContent = '🪙';
+  document.body.appendChild(drop);
+  
+  setTimeout(()=>{ drop.style.opacity='1'; drop.style.top='40vh'; }, 50);
+  setTimeout(()=>{ drop.style.opacity='0'; drop.remove(); }, 1200);
 
-  setTimeout(async () => {
-    const u = current();
-    if(u) {
-        // Выигрыш от процентов умножается на выпавший икс
-        const baseWin = Math.floor(baseBet * mult);
-        const finalWin = Math.floor(baseWin * winner.mult);
-        u.coins += finalWin; updateBalance(); await addCoins(finalWin);
-        $('result').className='result win'; $('result').textContent=`🟡 ИКС x${winner.mult}! +${finalWin} 🪙`;
-    }
-    b.textContent='ЗАБРАТЬ'; b.disabled=false; b.onclick=()=>{
-       $('caseModal').classList.remove('active'); bonusMode=false; spinning=false;
-       if($('spinBtn')) $('spinBtn').disabled=false; if($('fastSpinBtn')) $('fastSpinBtn').disabled=false;
-       drawWheel(getVisualChance());
-    };
-    $('modalLog').textContent = `Выпал множитель x${winner.mult}!`;
-  }, 3150);
+  setTimeout(() => {
+    const items = [{mult: 1.5, chance: 50}, {mult: 2, chance: 25}, {mult: 3, chance: 15}, {mult: 5, chance: 9}, {mult: 10, chance: 1}];
+    let r = Math.random() * 100, winner = items[0];
+    for(let i of items) { if (r < i.chance) { winner = i; break; } r -= i.chance; }
+
+    $('caseModal').classList.add('active'); 
+    $('modalTitle').textContent = '🟡 ЗОЛОТОЙ КЕЙС'; 
+    $('modalContents').style.display='block'; 
+    $('modalLog').textContent = 'Крутим...';
+    const b = $('modalOpenBtn'); b.disabled = true; b.textContent = '...';
+    
+    $('modalRouletteWrap').innerHTML = '<div class="roulette-view"><div class="roulette-strip" id="strip"></div><div class="roulette-marker"></div></div>';
+    
+    const strip = $('strip'); const cells = [];
+    for(let i=0; i<40; i++) { cells.push(items[Math.floor(Math.random()*items.length)].mult); }
+    cells[32] = winner.mult;
+    strip.innerHTML = cells.map(m => `<div class="roulette-cell" style="color:#ffcc00;font-weight:900;font-size:22px;text-shadow:0 0 10px #ffcc00;background:rgba(0,0,0,0.5);">x${m}</div>`).join('');
+    
+    setTimeout(()=>{ 
+        const view=document.querySelector('.roulette-view'), offset=-(32*66)+(view.offsetWidth/2)-30; 
+        strip.style.transition='transform 3s cubic-bezier(.1,.8,.2,1)'; 
+        strip.style.transform=`translateX(${offset}px)`; 
+    }, 50);
+
+    setTimeout(async () => {
+      const u = current();
+      if(u) {
+          const baseWin = Math.floor(baseBet * mult);
+          const finalWin = Math.floor(baseWin * winner.mult);
+          u.coins += finalWin; updateBalance(); await addCoins(finalWin);
+          $('result').className='result win'; $('result').textContent=`🟡 ИКС x${winner.mult}! +${finalWin} 🪙`;
+      }
+      b.textContent='ЗАБРАТЬ'; b.disabled=false; 
+      b.onclick=()=>{
+         $('caseModal').classList.remove('active'); bonusMode=false; goldActive=false; spinning=false;
+         if($('spinBtn')) $('spinBtn').disabled=false; if($('fastSpinBtn')) $('fastSpinBtn').disabled=false;
+         drawWheel(getVisualChance());
+      };
+      $('modalLog').textContent = `Выпал множитель x${winner.mult}!`;
+    }, 3150);
+
+  }, 1500); 
 }
 
 // ====== МИНЫ ======
