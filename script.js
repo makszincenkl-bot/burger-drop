@@ -148,12 +148,9 @@ function spinNeedle(targetAngle, onDone, fast) {
   const desired = ((targetAngle % 360) + 360) % 360;
   const delta = (desired - currentMod + 360) % 360;
   
-  // Если быстрая - делаем 1 оборот. Если обычная - 4 оборота.
   currentRotation += (fast ? 1 : 4) * 360 + delta;
   
   if ($('needle')) $('needle').style.transform = 'rotate(' + (currentRotation - 90) + 'deg)';
-  
-  // Ждем 1 секунду для быстрой, 4 секунды для обычной
   setTimeout(onDone, fast ? 1000 : 4000);
 }
 
@@ -165,7 +162,6 @@ async function doUpgrade(isFast){
   if(betAmount < 1 || u.coins < betAmount) { if($('result')) { $('result').textContent = 'Недостаточно монет!'; $('result').className = 'result lose'; } return; }
 
   const visualChance = getVisualChance();
-  const realChance = getRealChance();
   const mult = 100 / visualChance;
 
   spinning = true;
@@ -187,48 +183,68 @@ async function doUpgrade(isFast){
     if (Math.random() * 100 < 20) bonusHit = true;
   }
 
+  // Определяем угол стрелки (куда она визуально попадет)
   let targetAngle = 0;
-  let outcome = 'lose';
+  let isWin = false;
 
-  if (purpleActive && bonusHit) { outcome = 'purple'; targetAngle = 180; }
-  else if (goldActive && bonusHit) { outcome = 'gold'; targetAngle = 180; }
-  else {
-      const gs=180-visualChance*1.8, ge=180+visualChance*1.8;
-      targetAngle = Math.random() * 360;
-      if (targetAngle >= 172.5 && targetAngle <= 187.5) targetAngle = 200; 
-      if (Math.random() * 100 < realChance) outcome = 'win';
+  if (bonusHit) {
+      // Если бонус - целимся ровно в центр (180 градусов)
+      targetAngle = 180;
+  } else {
+      // Если не бонус, то либо выигрыш (попадание в зеленое), либо проигрыш
+      const gs = 180 - visualChance * 1.8;
+      const ge = 180 + visualChance * 1.8;
+      
+      // Бросаем случайный угол. 
+      // ВАЖНО: Если угол попал в зону бонуса (около 180), но бонус не выпал, 
+      // мы смещаем его в сторону, чтобы не было ложного срабатывания.
+      
+      isWin = Math.random() * 100 < visualChance; 
+      
+      if (isWin) {
+          // Если должны выиграть - ставим стрелку в зеленую зону, но избегаем центра (зоны бонуса)
+          targetAngle = gs + Math.random() * (ge - gs);
+          // Если попали в зону бонуса (172.5 - 187.5), смещаем
+          if (targetAngle >= 172.5 && targetAngle <= 187.5) targetAngle = 200;
+      } else {
+          // Если должны проиграть - ставим в черную зону
+          targetAngle = Math.random() * 360;
+          if (targetAngle >= gs && targetAngle <= ge) targetAngle = 90; // Сдвигаем в черное
+      }
   }
 
   drawWheel(visualChance); 
-  if(outcome !== 'win' && outcome !== 'lose' && $('hubText')) $('hubText').textContent='...';
+  if($('hubText')) $('hubText').textContent='...';
 
   spinNeedle(targetAngle, async ()=>{
     purpleActive = false; goldActive = false;
     drawWheel(visualChance);
 
-    if(outcome==='purple'){ 
-        $('result').className='result bonus'; $('result').textContent='🟣 БОНУС УДВОЕНИЯ!'; 
-        startBonus(betAmount); 
+    if(bonusHit && targetAngle === 180){ 
+        // Если бонус сработал и стрелка в центре
+        if (roll < 10) {
+            $('result').className='result bonus'; $('result').textContent='🟣 БОНУС УДВОЕНИЯ!'; 
+            startBonus(betAmount); 
+        } else {
+            $('result').className='result bonus'; $('result').textContent='🟡 ЗОЛОТОЙ БОНУС!'; 
+            startGoldBonus(betAmount); 
+        }
     } 
-    else if (outcome==='gold') { 
-        $('result').className='result bonus'; $('result').textContent='🟡 ЗОЛОТОЙ БОНУС!'; 
-        startGoldBonus(betAmount); 
-    } 
-    else if(outcome==='win'){
+    else if(isWin){
         const winAmt = Math.floor(betAmount * mult);
         u.coins += winAmt; updateBalance(); await addCoins(winAmt);
         $('result').className='result win'; $('result').textContent='🍔 УДАЧА! +' + winAmt + ' 🪙';
         if($('hubText')) { $('hubText').className='hub-text win'; $('hubText').textContent='УДАЧА'; }
-      spinning = false;
-      if($('spinBtn')) $('spinBtn').disabled = false; if($('fastSpinBtn')) $('fastSpinBtn').disabled = false;
-      setTimeout(()=>{ if($('hubText')) { $('hubText').className='hub-text'; updateHub(); } }, 1500);
+        spinning = false;
+        if($('spinBtn')) $('spinBtn').disabled = false; if($('fastSpinBtn')) $('fastSpinBtn').disabled = false;
+        setTimeout(()=>{ if($('hubText')) { $('hubText').className='hub-text'; updateHub(); } }, 1500);
     } else {
-      playSound('lose'); vibrate(200);
-      $('result').className='result lose'; $('result').textContent='😢 НЕУДАЧА! Вы проиграли.';
-      if($('hubText')) { $('hubText').className='hub-text lose'; $('hubText').textContent='НЕУДАЧА'; }
-      spinning = false;
-      if($('spinBtn')) $('spinBtn').disabled = false; if($('fastSpinBtn')) $('fastSpinBtn').disabled = false;
-      setTimeout(()=>{ if($('hubText')) { $('hubText').className='hub-text'; updateHub(); } }, 1500);
+        playSound('lose'); vibrate(200);
+        $('result').className='result lose'; $('result').textContent='😢 НЕУДАЧА! Вы проиграли.';
+        if($('hubText')) { $('hubText').className='hub-text lose'; $('hubText').textContent='НЕУДАЧА'; }
+        spinning = false;
+        if($('spinBtn')) $('spinBtn').disabled = false; if($('fastSpinBtn')) $('fastSpinBtn').disabled = false;
+        setTimeout(()=>{ if($('hubText')) { $('hubText').className='hub-text'; updateHub(); } }, 1500);
     }
   }, isFast);
 }
@@ -420,12 +436,11 @@ if($('crashStartBtn')) $('crashStartBtn').onclick = async () => {
   $('crashCashoutBtn').textContent = `ЗАБРАТЬ (x1.00)`;
   $('crashStatus').textContent = 'Игра началась!'; $('crashStatus').style.color = '#b8d8a8';
   
-  // Чем больше множитель, тем резче он растет (азартнее)
   const crashPoint = 1 + (Math.random() * Math.random() * 15);
   
   crashTimer = setInterval(async () => {
     if(!crashActive) return;
-    crashMult += 0.02 + (crashMult * 0.005); // Ускорение роста
+    crashMult += 0.02 + (crashMult * 0.005);
     $('crashMultiplier').textContent = `x${crashMult.toFixed(2)}`;
     $('crashCashoutBtn').textContent = `ЗАБРАТЬ (x${crashMult.toFixed(2)})`;
     
