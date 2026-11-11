@@ -118,16 +118,12 @@ function enterGame(){
 document.querySelectorAll('.tab[data-panel]').forEach(t=>t.addEventListener('click',()=>{document.querySelectorAll('.tab[data-panel]').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');$('panel-'+t.dataset.panel).classList.add('active');}));
 
 // ВИЗУАЛЬНОЕ КОЛЕСО
-function drawWheel(chance, isGold = false, isPurple = false){
+function drawWheel(chance, isGold = false){
   if(!$('wheel')) return;
   const gd=chance*3.6, gs=180-gd/2, ge=180+gd/2;
   let stops=`#2a1a0a 0deg,#3a2410 ${gs}deg,#4ca832 ${gs}deg,#7ee06b 180deg,#3d8f27 ${ge}deg,#1a0f05 ${ge}deg,#2a1a0a 360deg`;
   
-  // Если активен фиолетовый бонус, мы не перекрашиваем всё колесо, а подсвечиваем зону бонуса (172.5 - 187.5)
-  // Но при этом мы расширили шанс до 50%, значит зона от 90 до 270.
-  if (isPurple) {
-      stops=`#2a1a0a 0deg,#3a2410 90deg,#9b4dca 90deg,#c77dff 270deg,#1a0f05 270deg,#2a1a0a 360deg`;
-  } else if (isGold) {
+  if (isGold) {
       stops=`#2a1a0a 0deg,#3a2410 ${gs}deg,#4ca832 ${gs}deg,#7ee06b 172.5deg,#ffcc00 172.5deg,#ffea00 180deg,#b38f00 187.5deg,#7ee06b 187.5deg,#3d8f27 ${ge}deg,#1a0f05 ${ge}deg,#2a1a0a 360deg`;
   }
   $('wheel').style.background=`conic-gradient(from 0deg,${stops})`;
@@ -147,7 +143,7 @@ function updateUpgraderPreview() {
 if($('chance')) $('chance').addEventListener('input', updateUpgraderPreview);
 if($('upgradeBet')) $('upgradeBet').addEventListener('input', updateUpgraderPreview);
 
-let currentRotation = 0, spinning = false, bonusMode = false, bonusStreak = 0, goldActive = false, purpleActive = false;
+let currentRotation = 0, spinning = false, bonusMode = false, bonusStreak = 0, goldActive = false;
 
 function spinNeedle(targetAngle, onDone, fast) {
   const currentMod = ((currentRotation % 360) + 360) % 360;
@@ -157,7 +153,8 @@ function spinNeedle(targetAngle, onDone, fast) {
   currentRotation += (fast ? 1 : 4) * 360 + delta;
   
   if ($('needle')) $('needle').style.transform = 'rotate(' + (currentRotation - 90) + 'deg)';
-  setTimeout(onDone, fast ? 1000 : 4000);
+  // Ждем окончания CSS анимации (4 секунды) + небольшая задержка
+  setTimeout(onDone, fast ? 1000 : 4200);
 }
 
 async function doUpgrade(isFast){
@@ -178,15 +175,15 @@ async function doUpgrade(isFast){
 
   if($('result')) $('result').textContent = '';
   
-  goldActive = false; purpleActive = false;
+  goldActive = false;
   let roll = Math.random() * 100;
   
   let bonusHit = false;
   let bonusType = '';
   
   if (realChance > 0) {
-      if (roll < 10) { bonusHit = true; bonusType = 'purple'; purpleActive = true; } 
-      else if (roll < 20) { bonusHit = true; bonusType = 'gold'; goldActive = true; }
+      if (roll < 10) { bonusHit = true; bonusType = 'purple'; } 
+      else if (roll < 20) { bonusHit = true; bonusType = 'gold'; }
   }
 
   let targetAngle = 0;
@@ -209,20 +206,21 @@ async function doUpgrade(isFast){
       }
   }
 
-  // Рисуем колесо с подсветкой, если выпал бонус
-  drawWheel(visualChance, goldActive, false); 
+  drawWheel(visualChance); 
   if($('hubText')) $('hubText').textContent='...';
 
   spinNeedle(targetAngle, async ()=>{
-    drawWheel(visualChance); // Возвращаем обычное колесо после прокрутки
-    purpleActive = false; goldActive = false;
+    drawWheel(visualChance);
 
+    // Небольшая пауза, чтобы игрок увидел, куда попала стрелка, ПЕРЕД началом бонуса
     if(bonusHit && targetAngle === 180){ 
-        if (bonusType === 'purple') {
-            startPurpleBonus(betAmount, mult); 
-        } else {
-            startGoldBonus(betAmount, mult); 
-        }
+        setTimeout(() => {
+            if (bonusType === 'purple') {
+                startPurpleBonus(betAmount, mult); 
+            } else {
+                startGoldBonus(betAmount, mult); 
+            }
+        }, 500); // 0.5 сек задержки
     } 
     else if(isWin){
         const winAmt = Math.floor(betAmount * mult);
@@ -261,8 +259,8 @@ function startPurpleBonus(baseBet, mult) {
   $('result').className='result bonus'; 
   $('result').textContent = '🟣 БОНУС АКТИВИРОВАН!';
   
-  // Визуально расширяем колесо до 50% (фиолетовый)
-  drawWheel(50, false, true); 
+  // Визуально расширяем колесо до 50%
+  drawWheel(50); 
   
   runPurpleStep(baseBet, mult);
 }
@@ -271,7 +269,6 @@ function runPurpleStep(baseBet, mult) {
   // Внутри бонуса шанс на успех всегда 50%
   const win = Math.random() < 0.5; 
   
-  // Зона для 50% = 180 градусов (от 90 до 270)
   const gs = 180 - 50 * 1.8; // 90 градусов
   const ge = 180 + 50 * 1.8; // 270 градусов
   
@@ -350,15 +347,28 @@ function startGoldBonus(baseBet, mult) {
     $('modalRouletteWrap').innerHTML = '<div class="roulette-view"><div class="roulette-strip" id="strip"></div><div class="roulette-marker"></div></div>';
     
     const strip = $('strip'); const cells = [];
+    // Заполняем 40 ячеек. Индекс победителя будет 32.
     for(let i=0; i<40; i++) { cells.push(items[Math.floor(Math.random()*items.length)].mult); }
     cells[32] = winner.mult;
+    
     strip.innerHTML = cells.map(m => `<div class="roulette-cell" style="color:#ffcc00;font-weight:900;font-size:22px;text-shadow:0 0 10px #ffcc00;background:rgba(0,0,0,0.5);">x${m}</div>`).join('');
     
+    // Точный расчет центрирования
     setTimeout(()=>{ 
-        const view=document.querySelector('.roulette-view'), offset=-(32*66)+(view.offsetWidth/2)-30; 
-        strip.style.transition='transform 3s cubic-bezier(.1,.8,.2,1)'; 
-        strip.style.transform=`translateX(${offset}px)`; 
-    }, 50);
+        const view = document.querySelector('.roulette-view');
+        const stripEl = document.getElementById('strip');
+        if(!view || !stripEl) return;
+        
+        // Каждая ячейка 60px ширины + 6px отступы (margin 0 3px с двух сторон) = 66px
+        const cellWidth = 66; 
+        const winnerIndex = 32;
+        
+        // Центр победившей ячейки минус половина ширины экрана
+        const offset = -(winnerIndex * cellWidth) + (view.offsetWidth / 2) - (cellWidth / 2);
+        
+        stripEl.style.transition = 'transform 3s cubic-bezier(.1,.8,.2,1)'; 
+        stripEl.style.transform = `translateX(${offset}px)`; 
+    }, 100); // Даем время на отрисовку DOM
 
     setTimeout(async () => {
       const u = current();
@@ -375,7 +385,7 @@ function startGoldBonus(baseBet, mult) {
          drawWheel(getVisualChance());
       };
       $('modalLog').textContent = `Выпал множитель x${winner.mult}!`;
-    }, 3150);
+    }, 3500); // Чуть больше, чем 3 секунды анимации, чтобы точно доехало
 
   }, 1500); 
 }
