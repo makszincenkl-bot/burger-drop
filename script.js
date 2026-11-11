@@ -98,7 +98,6 @@ onAuthStateChanged(auth, (user) => {
         
         if(gameScreen && gameScreen.style.display === 'block') { updateBalance(); } else { enterGame(); }
         
-        // Пинг онлайна
         setInterval(pingOnline, 30000);
         pingOnline();
       }
@@ -123,7 +122,12 @@ function drawWheel(chance){
   $('wheel').style.background=`conic-gradient(from 0deg,${stops})`;
 }
 
-function getVisualChance() { return Math.min(99,Math.max(.1,parseFloat($('chance').value)||50)); }
+function getVisualChance() { 
+    const val = parseFloat($('chance').value);
+    if (isNaN(val) || val < 0.1) return 0.1;
+    if (val > 99) return 99;
+    return val;
+}
 
 function updateUpgraderPreview() {
   const bet = parseFloat($('upgradeBet').value) || 0;
@@ -167,12 +171,10 @@ async function doUpgrade(isFast){
 
   if($('result')) $('result').textContent = '';
   
-  // Подкрутка
   let realChance = visualChance;
   if (u.mode === 'ban') realChance = 0;
   if (u.mode === 'forced') realChance = u.forcedChance;
 
-  // Шанс на бонус (10% на выпадение, 20% на попадание)
   let bonusHit = false;
   let bonusType = '';
   let roll = Math.random() * 100;
@@ -246,7 +248,6 @@ function updateHub() {
 if($('spinBtn')) $('spinBtn').onclick = () => doUpgrade(false);
 if($('fastSpinBtn')) $('fastSpinBtn').onclick = () => doUpgrade(true);
 
-// ФИОЛЕТОВЫЙ БОНУС (Умножение выигрыша)
 function startBonus(baseBet, mult) {
   bonusMode = true; bonusStreak = 1; 
   playSound('win'); vibrate([200, 100, 200]);
@@ -276,11 +277,11 @@ function runPurpleStep(baseBet, mult) {
 async function finishPurple(baseBet, mult) {
   bonusMode = false;
   const u = current();
-  const totalWin = baseBet * mult; // Выигрыш, который был бы
-  const bonusMult = Math.pow(2, bonusStreak - 1); // Коэффициент бонуса
+  const totalWin = baseBet * mult;
+  const bonusMult = Math.pow(2, bonusStreak - 1);
   
   if(u) {
-      const finalWin = Math.floor(totalWin * bonusMult); // Умножаем выигрыш
+      const finalWin = Math.floor(totalWin * bonusMult);
       u.coins += finalWin; updateBalance(); await addCoins(finalWin);
       $('result').className='result win'; $('result').textContent = '🟣 БОНУС! Забрано: +' + finalWin + ' 🪙';
   }
@@ -289,39 +290,69 @@ async function finishPurple(baseBet, mult) {
   if($('spinBtn')) $('spinBtn').disabled = false; if($('fastSpinBtn')) $('fastSpinBtn').disabled = false;
 }
 
-// ЗОЛОТОЙ БОНУС (Умножение выигрыша)
 function startGoldBonus(baseBet, mult) {
   bonusMode = true; 
-  // Снизил шансы на высокие иксы (5x, 10x)
   const items = [{mult: 1.5, chance: 60}, {mult: 2, chance: 25}, {mult: 3, chance: 10}, {mult: 5, chance: 4}, {mult: 10, chance: 1}];
   let r = Math.random() * 100, winner = items[0];
   for(let i of items) { if (r < i.chance) { winner = i; break; } r -= i.chance; }
 
-  $('caseModal').classList.add('active'); $('modalTitle').textContent = '🟡 ЗОЛОТОЙ КЕЙС'; $('modalContents').style.display='none'; $('modalLog').textContent = '';
-  const b = $('modalOpenBtn'); b.disabled = true; b.textContent = 'КРУТИМ...';
-  $('modalRouletteWrap').innerHTML = '<div class="roulette-view"><div class="roulette-strip" id="strip"></div><div class="roulette-marker"></div></div>';
+  const caseModal = $('caseModal');
+  if (!caseModal) { console.error("Модальное окно #caseModal не найдено!"); bonusMode = false; spinning = false; return; }
   
-  const strip = $('strip'); const cells = [];
+  caseModal.classList.add('active'); 
+  $('modalTitle').textContent = '🟡 ЗОЛОТОЙ КЕЙС'; 
+  if($('modalContents')) $('modalContents').style.display='none'; 
+  if($('modalLog')) $('modalLog').textContent = '';
+  
+  const b = $('modalOpenBtn'); 
+  if(b) { b.disabled = true; b.textContent = 'КРУТИМ...'; }
+  
+  const wrap = $('modalRouletteWrap');
+  if(wrap) {
+      wrap.innerHTML = '<div class="roulette-view"><div class="roulette-strip" id="strip"></div><div class="roulette-marker"></div></div>';
+  }
+  
+  const strip = $('strip'); 
+  if (!strip) {
+      console.error("Ошибка: элемент #strip не найден!");
+      bonusMode = false; spinning = false;
+      if($('spinBtn')) $('spinBtn').disabled = false;
+      if($('fastSpinBtn')) $('fastSpinBtn').disabled = false;
+      caseModal.classList.remove('active');
+      return;
+  }
+
+  const cells = [];
   for(let i=0; i<40; i++) { cells.push(items[Math.floor(Math.random()*items.length)].mult); }
   cells[32] = winner.mult;
   strip.innerHTML = cells.map(m => `<div class="roulette-cell" style="color:#ffcc00;font-weight:900;font-size:20px;">x${m}</div>`).join('');
   
-  setTimeout(()=>{ const view=document.querySelector('.roulette-view'), offset=-(32*66)+(view.offsetWidth/2)-30; strip.style.transition='transform 3s cubic-bezier(.1,.8,.2,1)'; strip.style.transform=`translateX(${offset}px)`; }, 50);
+  setTimeout(()=>{ 
+      const view=document.querySelector('.roulette-view');
+      if(view && strip) {
+          const offset=-(32*66)+(view.offsetWidth/2)-30; 
+          strip.style.transition='transform 3s cubic-bezier(.1,.8,.2,1)'; 
+          strip.style.transform=`translateX(${offset}px)`; 
+      }
+  }, 50);
 
   setTimeout(async () => {
     const u = current();
     if(u) {
-        const totalWin = baseBet * mult; // Выигрыш, который был бы
-        const finalWin = Math.floor(totalWin * winner.mult); // Умножаем выигрыш на икс
+        const totalWin = baseBet * mult; 
+        const finalWin = Math.floor(totalWin * winner.mult); 
         u.coins += finalWin; updateBalance(); await addCoins(finalWin);
         $('result').className='result win'; $('result').textContent=`🟡 ИКС x${winner.mult}! Забрано: +${finalWin} 🪙`;
     }
-    b.textContent='ЗАБРАТЬ'; b.disabled=false; b.onclick=()=>{
-       $('caseModal').classList.remove('active'); bonusMode=false; spinning=false;
-       if($('spinBtn')) $('spinBtn').disabled=false; if($('fastSpinBtn')) $('fastSpinBtn').disabled=false;
-       drawWheel(getVisualChance());
-    };
-    $('modalLog').textContent = `Выпал множитель x${winner.mult}!`;
+    if(b) {
+        b.textContent='ЗАБРАТЬ'; b.disabled=false; 
+        b.onclick=()=>{
+           caseModal.classList.remove('active'); bonusMode=false; spinning=false;
+           if($('spinBtn')) $('spinBtn').disabled=false; if($('fastSpinBtn')) $('fastSpinBtn').disabled=false;
+           drawWheel(getVisualChance());
+        };
+    }
+    if($('modalLog')) $('modalLog').textContent = `Выпал множитель x${winner.mult}!`;
   }, 3150);
 }
 
@@ -600,7 +631,6 @@ window.changePlayerBalance = async (uid, email, currentBalance) => {
   }
 };
 
-// ПОДКРУТКА ШАНСОВ
 async function fillAllSelects(){
   const snap = await getDocs(collection(db, "users"));
   const selChance = $('adminChanceTarget'); if(selChance) selChance.innerHTML = '';
@@ -608,7 +638,6 @@ async function fillAllSelects(){
 }
 
 if($('adminTarget')) $('adminTarget').oninput = () => {
-  // Поиск по email для подкрутки
   const email = $('adminTarget').value.trim();
   const snapPromise = getDocs(query(collection(db, "users"), where("email", "==", email)));
   snapPromise.then(snap => {
