@@ -118,12 +118,16 @@ function enterGame(){
 document.querySelectorAll('.tab[data-panel]').forEach(t=>t.addEventListener('click',()=>{document.querySelectorAll('.tab[data-panel]').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');$('panel-'+t.dataset.panel).classList.add('active');}));
 
 // ВИЗУАЛЬНОЕ КОЛЕСО
-function drawWheel(chance, isGold = false){
+function drawWheel(chance, isGold = false, isPurple = false){
   if(!$('wheel')) return;
   const gd=chance*3.6, gs=180-gd/2, ge=180+gd/2;
   let stops=`#2a1a0a 0deg,#3a2410 ${gs}deg,#4ca832 ${gs}deg,#7ee06b 180deg,#3d8f27 ${ge}deg,#1a0f05 ${ge}deg,#2a1a0a 360deg`;
   
-  if (isGold) {
+  // Если активен фиолетовый бонус, мы не перекрашиваем всё колесо, а подсвечиваем зону бонуса (172.5 - 187.5)
+  // Но при этом мы расширили шанс до 50%, значит зона от 90 до 270.
+  if (isPurple) {
+      stops=`#2a1a0a 0deg,#3a2410 90deg,#9b4dca 90deg,#c77dff 270deg,#1a0f05 270deg,#2a1a0a 360deg`;
+  } else if (isGold) {
       stops=`#2a1a0a 0deg,#3a2410 ${gs}deg,#4ca832 ${gs}deg,#7ee06b 172.5deg,#ffcc00 172.5deg,#ffea00 180deg,#b38f00 187.5deg,#7ee06b 187.5deg,#3d8f27 ${ge}deg,#1a0f05 ${ge}deg,#2a1a0a 360deg`;
   }
   $('wheel').style.background=`conic-gradient(from 0deg,${stops})`;
@@ -143,7 +147,7 @@ function updateUpgraderPreview() {
 if($('chance')) $('chance').addEventListener('input', updateUpgraderPreview);
 if($('upgradeBet')) $('upgradeBet').addEventListener('input', updateUpgraderPreview);
 
-let currentRotation = 0, spinning = false, bonusMode = false, bonusStreak = 0, goldActive = false;
+let currentRotation = 0, spinning = false, bonusMode = false, bonusStreak = 0, goldActive = false, purpleActive = false;
 
 function spinNeedle(targetAngle, onDone, fast) {
   const currentMod = ((currentRotation % 360) + 360) % 360;
@@ -174,15 +178,15 @@ async function doUpgrade(isFast){
 
   if($('result')) $('result').textContent = '';
   
-  goldActive = false;
+  goldActive = false; purpleActive = false;
   let roll = Math.random() * 100;
   
   let bonusHit = false;
   let bonusType = '';
   
   if (realChance > 0) {
-      if (roll < 10) { bonusHit = true; bonusType = 'purple'; } 
-      else if (roll < 20) { bonusHit = true; bonusType = 'gold'; }
+      if (roll < 10) { bonusHit = true; bonusType = 'purple'; purpleActive = true; } 
+      else if (roll < 20) { bonusHit = true; bonusType = 'gold'; goldActive = true; }
   }
 
   let targetAngle = 0;
@@ -205,11 +209,13 @@ async function doUpgrade(isFast){
       }
   }
 
-  drawWheel(visualChance); 
+  // Рисуем колесо с подсветкой, если выпал бонус
+  drawWheel(visualChance, goldActive, false); 
   if($('hubText')) $('hubText').textContent='...';
 
   spinNeedle(targetAngle, async ()=>{
-    drawWheel(visualChance);
+    drawWheel(visualChance); // Возвращаем обычное колесо после прокрутки
+    purpleActive = false; goldActive = false;
 
     if(bonusHit && targetAngle === 180){ 
         if (bonusType === 'purple') {
@@ -248,15 +254,15 @@ function updateHub() {
 if($('spinBtn')) $('spinBtn').onclick = () => doUpgrade(false);
 if($('fastSpinBtn')) $('fastSpinBtn').onclick = () => doUpgrade(true);
 
-// ====== ФИОЛЕТОВЫЙ БОНУС (ВИЗУАЛЬНО 50%) ======
+// ====== ФИОЛЕТОВЫЙ БОНУС ======
 function startPurpleBonus(baseBet, mult) {
   bonusMode = true; bonusStreak = 0; 
   playSound('win'); vibrate([200, 100, 200]);
   $('result').className='result bonus'; 
   $('result').textContent = '🟣 БОНУС АКТИВИРОВАН!';
   
-  // Визуально расширяем колесо до 50%
-  drawWheel(50); 
+  // Визуально расширяем колесо до 50% (фиолетовый)
+  drawWheel(50, false, true); 
   
   runPurpleStep(baseBet, mult);
 }
@@ -272,15 +278,14 @@ function runPurpleStep(baseBet, mult) {
   let target = 0;
   if (win) {
       target = gs + Math.random() * (ge - gs);
-      if (target >= 172.5 && target <= 187.5) target = 200; // Избегаем центра
+      if (target >= 172.5 && target <= 187.5) target = 200; 
   } else {
       target = Math.random() * 360;
-      if (target >= gs && target <= ge) target = 45; // Сдвигаем в черное
+      if (target >= gs && target <= ge) target = 45; 
   }
   
   if($('hubText')) $('hubText').textContent = '50% | СТРИК: ' + bonusStreak;
   
-  // Крутим МЕДЛЕННО (4 секунды)
   spinNeedle(target, async () => {
     if(win) { 
       bonusStreak++; 
@@ -296,7 +301,7 @@ function runPurpleStep(baseBet, mult) {
 
 async function finishPurple(baseBet, mult) {
   bonusMode = false;
-  drawWheel(getVisualChance()); // Возвращаем обычное колесо
+  drawWheel(getVisualChance()); 
   
   const u = current();
   const baseWin = baseBet * mult; 
@@ -308,7 +313,7 @@ async function finishPurple(baseBet, mult) {
           u.coins += finalWin; updateBalance(); await addCoins(finalWin);
           $('result').className='result win'; $('result').textContent = `🟣 БОНУС! x${bonusMult}! +${finalWin} 🪙`;
       } else {
-          $('result').className='result lose'; $('result').textContent = `🟣 БОНУС ПРОВАЛЕН (0 стриков)`;
+          $('result').className='result lose'; $('result').textContent = `🟣 БОНУС ПРОВАЛЕН`;
       }
   }
   if($('hubText')) { $('hubText').className='hub-text'; updateHub(); }
