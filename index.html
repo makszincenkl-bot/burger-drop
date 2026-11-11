@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Burger Drop 🍔</title>
 <link rel="stylesheet" href="style.css">
+<style>
+  /* Дополнительные стили для рулетки золотого кейса */
+  .roulette-view { display: flex; align-items: center; height: 100%; position: relative; }
+  .roulette-strip { display: flex; transition: transform 0s; }
+  .roulette-cell { width: 60px; height: 60px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-right: 1px solid #ffffff1a; margin: 0 3px; }
+  .roulette-marker { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: #ff0000; transform: translateX(-50%); z-index: 10; }
+  .roulette-marker::before { content: '▼'; position: absolute; top: -10px; left: -6px; color: #ff0000; font-size: 14px; }
+</style>
 </head>
 <body>
 <div class="bg-layer" id="bgLayer"></div>
@@ -94,7 +102,6 @@
   <div class="panel" id="panel-admin">
     <div class="section-title">🛡 Админ-панель</div>
     
-    <!-- Блок выдачи и подкрутки -->
     <div class="case-block">
       <div style="font-size:13px;font-weight:700;margin-bottom:8px">👥 Игроки (Онлайн/Офлайн)</div>
       <button class="small" id="refreshPlayersBtn" style="margin-bottom: 10px; background: #4ca832;">ОБНОВИТЬ СПИСОК</button>
@@ -135,7 +142,6 @@
     <div class="close-modal" onclick="document.getElementById('supportModal').classList.remove('active')">×</div>
     <div class="modal-head" style="margin-bottom: 10px;">🤖 Техподдержка</div>
     
-    <!-- Чат игрока -->
     <div id="playerChatView" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
       <div id="supportMessages" style="flex: 1; overflow-y: auto; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; padding-right: 5px;"></div>
       <div style="display: flex; gap: 8px;">
@@ -144,7 +150,6 @@
       </div>
     </div>
 
-    <!-- Чат админа -->
     <div id="adminChatView" style="flex: 1; display: none; flex-direction: column; overflow: hidden;">
       <div style="font-size: 13px; font-weight: 700; color: #2196F3;">Тикеты:</div>
       <select id="adminTicketSelect" style="width: 100%; padding: 8px; margin-bottom: 10px;"></select>
@@ -154,6 +159,20 @@
         <button id="adminTicketSendBtn" class="small" style="width: 60px; margin: 0;">➤</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- Модальное окно для Золотого кейса (ДОБАВЛЕНО) -->
+<div class="modal-overlay" id="caseModal" style="z-index: 1001;">
+  <div class="modal" style="max-width: 440px; display: flex; flex-direction: column; padding: 15px; text-align: center;">
+    <div class="modal-head" id="modalTitle" style="margin-bottom: 15px; font-size: 20px; color: #ffcc00;">🟡 ЗОЛОТОЙ КЕЙС</div>
+    <div id="modalContents" style="margin-bottom: 15px;">
+      <div id="modalRouletteWrap" style="position: relative; width: 100%; height: 80px; overflow: hidden; background: #00000080; border-radius: 10px; border: 2px solid #ffcc00;">
+         <!-- Сюда скрипт вставит рулетку -->
+      </div>
+    </div>
+    <div id="modalLog" style="color: #b8d8a8; font-size: 14px; margin-bottom: 15px; font-weight: bold;"></div>
+    <button id="modalOpenBtn" style="margin-bottom: 0; background: linear-gradient(135deg, #ffcc00, #ff8c00); color: #000;">ЗАБРАТЬ</button>
   </div>
 </div>
 
