@@ -6,12 +6,19 @@
 <title>Burger Drop 🍔</title>
 <link rel="stylesheet" href="style.css">
 <style>
-  /* Дополнительные стили для рулетки золотого кейса */
+  /* Стили для рулетки золотого кейса */
   .roulette-view { display: flex; align-items: center; height: 100%; position: relative; }
   .roulette-strip { display: flex; transition: transform 0s; }
   .roulette-cell { width: 60px; height: 60px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-right: 1px solid #ffffff1a; margin: 0 3px; }
   .roulette-marker { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: #ff0000; transform: translateX(-50%); z-index: 10; }
   .roulette-marker::before { content: '▼'; position: absolute; top: -10px; left: -6px; color: #ff0000; font-size: 14px; }
+  
+  /* Стили для кнопок пополнения */
+  .deposit-btn { width: 100%; padding: 15px; margin-bottom: 10px; border-radius: 10px; border: none; font-weight: bold; font-size: 16px; cursor: pointer; color: #fff; }
+  .btn-crypto { background: linear-gradient(135deg, #f7931a, #ffb347); }
+  .btn-sbp { background: linear-gradient(135deg, #2196F3, #0d47a1); }
+  .crypto-box { display: none; background: #0000004d; padding: 15px; border-radius: 10px; margin-top: 10px; text-align: left; }
+  .crypto-box input { width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 5px; border: 1px solid #4ca832; background: #000; color: #fff; }
 </style>
 </head>
 <body>
@@ -92,10 +99,26 @@
     </div>
   </div>
 
+  <!-- ОБНОВЛЕННЫЙ БЛОК ПОПОЛНЕНИЯ -->
   <div class="panel" id="panel-deposit">
     <div class="section-title">Пополнение</div>
-    <div style="text-align: center; font-size: 14px; color: #ffcc66; margin-top: 15px; font-weight: 600;">
-      Насчет пополнения напишите в телеграмм <a href="https://t.me/pruneslo" target="_blank" style="color: #ff8c00;">@pruneslo</a>
+    
+    <button id="btnCrypto" class="deposit-btn btn-crypto">💰 Криптовалюта (USDT)</button>
+    
+    <div id="cryptoBox" class="crypto-box">
+      <label style="display:block; margin-bottom:5px; font-size:12px; color:#b8d8a8;">Перевод по сети TON (TRC-20):</label>
+      <input type="text" id="tonAddress" value="UQAf4h67v4H5_G4Q8U9v2j9U6H5G4Q8U9v2j9U6H5G4Q8U9" readonly>
+      <button id="copyTonBtn" class="small" style="width:100%; margin-bottom:15px;">КОПИЯ</button>
+      
+      <label style="display:block; margin-bottom:5px; font-size:12px; color:#b8d8a8;">Калькулятор (100 монет = 0.90 USDT):</label>
+      <input type="number" id="cryptoCoinsInput" placeholder="Кол-во монет" min="1">
+      <div style="text-align:center; font-weight:bold; color:#ffcc00; font-size:18px;" id="cryptoUsdtAmount">0.00 USDT</div>
+    </div>
+
+    <button id="btnSbp" class="deposit-btn btn-sbp" style="margin-top:10px;">🏦 СБП (Перевод по РФ</button>
+    
+    <div style="text-align: center; font-size: 12px; color: #b8d8a8; margin-top: 20px;">
+      По всем вопросам пишите в телеграмм <a href="https://t.me/pruneslo" target="_blank" style="color: #ff8c00;">@pruneslo</a>
     </div>
   </div>
   
@@ -103,7 +126,7 @@
     <div class="section-title">🛡 Админ-панель</div>
     
     <div class="case-block">
-      <div style="font-size:13px;font-weight:700;margin-bottom:8px">👥 Игроки (Онлайн/Офлайн)</div>
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px">👥 Игроки</div>
       <button class="small" id="refreshPlayersBtn" style="margin-bottom: 10px; background: #4ca832;">ОБНОВИТЬ СПИСОК</button>
       <div id="adminPlayersList" style="max-height: 200px; overflow-y: auto; font-size: 12px; background: #0000004d; padding: 5px; border-radius: 8px;"></div>
       <div class="log" id="adminPlayersLog"></div>
@@ -112,22 +135,22 @@
     <div class="case-block">
       <div style="font-size:13px;font-weight:700;margin-bottom:8px">🎯 Подкрутка шансов</div>
       <div class="admin-field"><label>Email игрока</label><input type="text" id="adminTarget" placeholder="player@test.com"></div>
+      <div class="admin-field"><label>Сумма монет</label><input type="number" id="adminCoins" value="1000"></div>
+      <button class="small" id="adminGiveBtn" style="margin-top: 5px;">ВЫДАТЬ МОНЕТЫ</button>
+      <div class="log" id="adminGiveLog"></div>
+      
+      <hr style="border-color:#ffffff1a; margin: 15px 0;">
       
       <div class="admin-field">
-        <label>Режим:</label>
-        <select id="adminMode" style="width: 100%; padding: 8px; margin-bottom: 5px;">
-          <option value="auto">Авто (по шансу игрока)</option>
-          <option value="forced">Принудительный шанс</option>
-          <option value="ban">Всегда проигрыш (Бан)</option>
-        </select>
+        <label>Выберите игрока:</label>
+        <select id="adminChanceTarget" style="width: 100%; padding: 8px; margin-bottom: 5px;"></select>
       </div>
-
-      <div class="admin-field" id="chanceInputWrap" style="display: none;">
+      <div class="admin-field">
         <label>Шанс (%)</label>
         <input type="number" id="adminChanceValue" value="10" min="0.1" max="99" step="0.1">
       </div>
-
       <button class="small" id="adminChanceBtn" style="margin-top: 10px;">ПРИМЕНИТЬ</button>
+      <button class="small" id="adminChanceResetBtn" style="margin-top: 5px; background: #ff6b4a;">СБРОСИТЬ</button>
       <div class="log" id="adminChanceLog"></div>
     </div>
   </div>
@@ -162,7 +185,7 @@
   </div>
 </div>
 
-<!-- Модальное окно для Золотого кейса (ДОБАВЛЕНО) -->
+<!-- Модальное окно для Золотого кейса -->
 <div class="modal-overlay" id="caseModal" style="z-index: 1001;">
   <div class="modal" style="max-width: 440px; display: flex; flex-direction: column; padding: 15px; text-align: center;">
     <div class="modal-head" id="modalTitle" style="margin-bottom: 15px; font-size: 20px; color: #ffcc00;">🟡 ЗОЛОТОЙ КЕЙС</div>
